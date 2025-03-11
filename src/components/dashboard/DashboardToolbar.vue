@@ -2,7 +2,7 @@
 import type { AppConfig } from '@/types/appConfig'
 import _appConfig from '#build/app.config'
 import theme from '@/components/themes/dashboard-toolbar'
-import { tv } from '../../utils/tv'
+import { tv } from '../utils/tv'
 
 const appConfigdashboardToolbar = _appConfig as AppConfig & {
   uiPro: { dashboardToolbar: Partial<typeof theme> }

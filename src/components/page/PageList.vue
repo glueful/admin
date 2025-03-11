@@ -2,7 +2,7 @@
 import type { AppConfig } from '@/types/appConfig'
 import _appConfig from '#build/app.config'
 import theme from '@/components/themes/page-list'
-import { tv } from '../../utils/tv'
+import { tv } from '../utils/tv'
 
 const appConfigPageList = _appConfig as AppConfig & { uiPro: { pageList: Partial<typeof theme> } }
 

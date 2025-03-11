@@ -3,7 +3,7 @@ import type { AppConfig } from '@/types/appConfig'
 import type { LinkProps } from '@nuxt/ui'
 import _appConfig from '#build/app.config'
 import theme from '@/components/themes/footer-columns'
-import { tv } from '../../utils/tv'
+import { tv } from '../utils/tv'
 
 const appConfigFooterColumns = _appConfig as AppConfig & {
   uiPro: { footerColumns: Partial<typeof theme> }
@@ -51,7 +51,7 @@ export interface FooterColumnsSlots<T> {
 <script setup lang="ts" generic="T extends FooterColumnLink">
 import { Primitive } from 'reka-ui'
 import { pickLinkProps } from '@nuxt/ui/utils/link'
-import { useAppConfig } from '@/composables/appConfig'
+import { useAppConfig } from '@/components/composables/appConfig'
 
 const props = withDefaults(defineProps<FooterColumnsProps<T>>(), {
   as: 'nav',

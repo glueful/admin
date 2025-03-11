@@ -3,7 +3,7 @@ import type { VariantProps } from 'tailwind-variants'
 import type { AppConfig } from '@/types/appConfig'
 import _appConfig from '#build/app.config'
 import theme from '@/components/themes/page-marquee'
-import { tv } from '../../utils/tv'
+import { tv } from '../utils/tv'
 
 const appConfigPageMarquee = _appConfig as AppConfig & {
   uiPro: { pageMarquee: Partial<typeof theme> }

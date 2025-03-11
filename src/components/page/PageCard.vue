@@ -4,7 +4,7 @@ import type { AppConfig } from '@/types/appConfig'
 import type { LinkProps } from '@nuxt/ui'
 import _appConfig from '#build/app.config'
 import theme from '@/components/themes/page-card'
-import { tv } from '../../utils/tv'
+import { tv } from '../utils/tv'
 
 const appConfigPageCard = _appConfig as AppConfig & { uiPro: { pageCard: Partial<typeof theme> } }
 
@@ -62,7 +62,7 @@ export interface PageCardSlots {
 import { computed, ref, watch } from 'vue'
 import { Primitive } from 'reka-ui'
 import { useMouseInElement, pausableFilter } from '@vueuse/core'
-import { getSlotChildrenText } from '../../utils'
+import { getSlotChildrenText } from '../utils'
 
 defineOptions({ inheritAttrs: false })
 

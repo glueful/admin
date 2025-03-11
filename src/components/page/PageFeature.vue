@@ -4,7 +4,7 @@ import type { AppConfig } from '@/types/appConfig'
 import type { LinkProps } from '@nuxt/ui'
 import _appConfig from '#build/app.config'
 import theme from '@/components/themes/page-feature'
-import { tv } from '../../utils/tv'
+import { tv } from '../utils/tv'
 
 const appConfigPageFeature = _appConfig as AppConfig & {
   uiPro: { pageFeature: Partial<typeof theme> }
@@ -46,7 +46,7 @@ export interface PageFeatureSlots {
 <script setup lang="ts">
 import { computed } from 'vue'
 import { Primitive } from 'reka-ui'
-import { getSlotChildrenText } from '../../utils'
+import { getSlotChildrenText } from '../utils'
 
 defineOptions({ inheritAttrs: false })
 

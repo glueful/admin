@@ -3,7 +3,7 @@
 import type { AppConfig } from '@/types/appConfig'
 import _appConfig from '#build/app.config'
 import theme from '@/components/themes/main'
-import { tv } from '../../utils/tv'
+import { tv } from '../utils/tv'
 
 const appConfigMain = _appConfig as AppConfig & { uiPro: { main: Partial<typeof theme> } }
 

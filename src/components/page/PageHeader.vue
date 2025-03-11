@@ -3,7 +3,7 @@ import type { AppConfig } from '@/types/appConfig'
 import type { ButtonProps } from '@nuxt/ui'
 import _appConfig from '#build/app.config'
 import theme from '@/components/themes/page-header'
-import { tv } from '../../utils/tv'
+import { tv } from '../utils/tv'
 
 const appConfigPageHeader = _appConfig as AppConfig & {
   uiPro: { pageHeader: Partial<typeof theme> }

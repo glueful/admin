@@ -2,8 +2,8 @@
 import type { AppConfig } from '@/types/appConfig'
 import _appConfig from '#build/app.config'
 import theme from '@/components/themes/dashboard-panel'
-import type { UseResizableProps } from '../../composables/useResizable'
-import { tv } from '../../utils/tv'
+import type { UseResizableProps } from '../composables/useResizable'
+import { tv } from '../utils/tv'
 
 const appConfig = _appConfig as AppConfig & { uiPro: { dashboardPanel: Partial<typeof theme> } }
 
@@ -32,8 +32,8 @@ export interface DashboardPanelSlots {
 
 <script setup lang="ts">
 import { computed, useId, toRef } from 'vue'
-import { useDashboard } from '../../utils/dashboard'
-import { useResizable } from '../../composables/useResizable'
+import { useDashboard } from '../utils/dashboard'
+import { useResizable } from '../composables/useResizable'
 
 const props = withDefaults(defineProps<DashboardPanelProps>(), {
   minSize: 15,

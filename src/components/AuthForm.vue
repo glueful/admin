@@ -8,7 +8,7 @@ import type {
   FormSubmitEvent,
   SeparatorProps,
 } from '@nuxt/ui'
-import { tv } from '../utils/tv'
+import { tv } from './utils/tv'
 import theme from '@/components/themes/auth-form'
 
 const appConfig = _appConfig as AppConfig & { ui: { authForm: Partial<typeof theme> } }
@@ -85,7 +85,7 @@ export type AuthFormSlots<T extends object, F extends AuthFormField> = {
 import { reactive, ref, type AppConfig } from 'vue'
 import { Primitive } from 'reka-ui'
 import { omit } from '@nuxt/ui/utils/index'
-import { useAppConfig } from '@/composables/appConfig'
+import { useAppConfig } from '@/components/composables/appConfig'
 
 const props = withDefaults(defineProps<AuthFormProps<T, F>>(), {
   separator: 'or',

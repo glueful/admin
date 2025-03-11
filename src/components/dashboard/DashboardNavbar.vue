@@ -3,8 +3,8 @@ import type { AppConfig } from '@/types/appConfig'
 import type { ButtonProps } from '@nuxt/ui'
 import _appConfig from '#build/app.config'
 import theme from '@/components/themes/dashboard-navbar'
-import { tv } from '../../utils/tv'
-import type { DashboardContext } from '../../utils/dashboard'
+import { tv } from '../utils/tv'
+import type { DashboardContext } from '../utils/dashboard'
 
 const appConfig = _appConfig as AppConfig & { uiPro: { dashboardNavbar: Partial<typeof theme> } }
 
@@ -49,7 +49,7 @@ export interface DashboardNavbarSlots {
 <script setup lang="ts">
 import { Primitive } from 'reka-ui'
 import { createReusableTemplate } from '@vueuse/core'
-import { useDashboard } from '../../utils/dashboard'
+import { useDashboard } from '../utils/dashboard'
 
 const props = withDefaults(defineProps<DashboardNavbarProps>(), {
   toggle: true,

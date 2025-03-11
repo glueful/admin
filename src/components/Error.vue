@@ -4,7 +4,7 @@ import type { ButtonProps } from '@nuxt/ui'
 import type { NuxtError } from '@/types/error'
 import _appConfig from '#build/app.config'
 import theme from '@/components/themes/error'
-import { tv } from '../utils/tv'
+import { tv } from './utils/tv'
 
 const appConfigError = _appConfig as AppConfig & { uiPro: { error: Partial<typeof theme> } }
 
@@ -43,7 +43,7 @@ export interface ErrorSlots {
 
 <script setup lang="ts">
 import { Primitive } from 'reka-ui'
-import { clearError } from '@/utils/error'
+import { clearError } from '@/components/utils/error'
 
 const props = withDefaults(defineProps<ErrorProps>(), {
   as: 'main',

@@ -3,8 +3,8 @@ import type { AppConfig } from '@/types/appConfig'
 import type { ButtonProps, DrawerProps, ModalProps, SlideoverProps } from '@nuxt/ui'
 import _appConfig from '#build/app.config'
 import theme from '@/components/themes/dashboard-sidebar'
-import type { UseResizableProps } from '@/composables/useResizable'
-import { tv } from '../../utils/tv'
+import type { UseResizableProps } from '@/components/composables/useResizable'
+import { tv } from '../utils/tv'
 
 const appConfig = _appConfig as AppConfig & { uiPro: { dashboardSidebar: Partial<typeof theme> } }
 
@@ -65,8 +65,8 @@ import { createReusableTemplate } from '@vueuse/core'
 import USlideover from '@nuxt/ui/components/Slideover.vue'
 import UModal from '@nuxt/ui/components/Modal.vue'
 import UDrawer from '@nuxt/ui/components/Drawer.vue'
-import { useResizable } from '@/composables/useResizable'
-import { useDashboard } from '@/utils/dashboard'
+import { useResizable } from '@/components/composables/useResizable'
+import { useDashboard } from '@/components/utils/dashboard'
 import DashboardResizeHandle from './DashboardResizeHandle.vue'
 import DashboardSidebarToggle from './DashboardSidebarToggle.vue'
 

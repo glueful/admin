@@ -3,7 +3,7 @@ import type { AppConfig } from '@/types/appConfig'
 import type { ButtonProps, DrawerProps, ModalProps, SlideoverProps } from '@nuxt/ui'
 import _appConfig from '#build/app.config'
 import theme from '@/components/themes/header'
-import { tv } from '../../utils/tv'
+import { tv } from '../utils/tv'
 
 const appConfigHeader = _appConfig as AppConfig & { uiPro: { header: Partial<typeof theme> } }
 
@@ -70,9 +70,9 @@ import { createReusableTemplate } from '@vueuse/core'
 import USlideover from '@nuxt/ui/components/Slideover.vue'
 import UModal from '@nuxt/ui/components/Modal.vue'
 import UDrawer from '@nuxt/ui/components/Drawer.vue'
-import { useAppConfig } from '@/composables/appConfig'
+import { useAppConfig } from '@/components/composables/appConfig'
 import { useRoute } from 'vue-router'
-import { getSlotChildrenText } from '../../utils'
+import { getSlotChildrenText } from '../utils'
 
 const props = withDefaults(defineProps<HeaderProps<T>>(), {
   as: 'header',

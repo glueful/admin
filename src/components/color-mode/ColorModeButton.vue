@@ -17,7 +17,7 @@ export interface ColorModeButtonProps
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useColorMode } from '@vueuse/core'
-import { useAppConfig } from '@/composables/appConfig'
+import { useAppConfig } from '@/components/composables/appConfig'
 
 defineOptions({ inheritAttrs: false })
 
