@@ -21,10 +21,19 @@ export default defineConfigWithVueTs(
 
   pluginVue.configs['flat/essential'],
   vueTsConfigs.recommended,
-  
+
   {
     ...pluginVitest.configs.recommended,
     files: ['src/**/__tests__/*'],
   },
   skipFormatting,
+  // Add custom rules
+  {
+    name: 'app/custom-rules',
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'off', // Disable 'Unexpected any' rule
+      'vue/multi-word-component-names': 'off', // Disable 'Component name should be multi-word' rule
+      '@typescript-eslint/no-empty-object-type': 'off',
+    },
+  },
 )

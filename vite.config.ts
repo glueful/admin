@@ -13,19 +13,17 @@ export default defineConfig({
     vue(),
     vueDevTools(),
     tailwindcss(),
-    ui({}),
+    ui({
+      colorMode: false,
+      ui: {
+        colors: {
+          primary: 'zinc',
+        },
+      },
+    }),
     VueRouter({
       /* options */
-      routesFolder: [
-        {
-          src: 'src/views',
-          path: '',
-          // override globals
-          exclude: (excluded) => excluded,
-          filePatterns: (filePatterns) => filePatterns,
-          extensions: (extensions) => extensions,
-        },
-      ],
+      routesFolder: ['src/pages'],
     }),
   ],
   resolve: {
