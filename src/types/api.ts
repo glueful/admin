@@ -11,9 +11,93 @@ export interface APISuccessResponse<T = any[]> extends APIResponse<T> {
   success: true
 }
 
-export interface APIErrorResponse extends APIResponse {
+// Fix for the TypeScript error - provide a specific type for error data
+export interface APIErrorResponse
+  extends APIResponse<{
+    fieldErrors?: Record<string, string[]>
+    generalErrors?: string[]
+    [key: string]: any
+  }> {
   success: false
 }
+
+// Enhanced error response with structured field validation errors
+export interface ValidationErrorResponse extends APIErrorResponse {
+  data: {
+    fieldErrors: Record<string, string[]>
+    generalErrors: string[]
+  }
+}
+
+// Pagination response type for paginated collections
+export interface PaginatedResponse<T>
+  extends APISuccessResponse<{
+    items: T[]
+    total: number
+    page: number
+    perPage: number
+    lastPage: number
+  }> {}
+
+// Domain-specific data interfaces for common API responses
+export interface User {
+  id: number | string
+  username: string
+  email: string
+  firstName?: string
+  lastName?: string
+  permissions?: string[]
+  roles?: string[]
+  isActive: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+export interface TableMetadata {
+  name: string
+  columns: {
+    name: string
+    type: string
+    nullable: boolean
+    default?: any
+    key?: string
+    extra?: string
+  }[]
+  primaryKey: string
+  foreignKeys?: {
+    column: string
+    references: {
+      table: string
+      column: string
+    }
+  }[]
+}
+
+export interface TableData {
+  [key: string]: any
+}
+
+// Common typed responses
+export type UserResponse = APISuccessResponse<User>
+export type UsersResponse = APISuccessResponse<User[]>
+export type PaginatedUsersResponse = PaginatedResponse<User>
+export type TableMetadataResponse = APISuccessResponse<TableMetadata>
+export type TableDataResponse = APISuccessResponse<TableData[]>
+export type PaginatedTableDataResponse = PaginatedResponse<TableData>
+
+// Authentication response types
+export interface TokenData {
+  access_token: string
+  refresh_token: string
+  token_type: string
+  expires_in: number
+}
+
+export interface AuthResponse
+  extends APISuccessResponse<{
+    user: User
+    tokens: TokenData
+  }> {}
 
 // Helper type for wrapping API return types
 export type APIResult<T> = Promise<APIResponse<T>>
