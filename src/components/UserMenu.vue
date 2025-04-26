@@ -16,13 +16,13 @@ const router = useRouter()
 // Get user data from auth store instead of hardcoding
 const user = computed(() => {
   const fullName = authStore.user
-    ? `${authStore.user.firstName || ''} ${authStore.user.lastName || ''}`.trim()
+    ? `${authStore.user.profile.first_name || ''} ${authStore.user.profile.last_name || ''}`.trim()
     : 'Super User'
 
   return {
     name: fullName,
     avatar: {
-      src: '', // You might want to add an avatar URL based on user email for services like Gravatar
+      src: authStore.user?.profile.photo_url || '', // Use the photo_url from the profile if available
       alt: fullName[0],
     },
   }

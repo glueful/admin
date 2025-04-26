@@ -1,7 +1,9 @@
 <template>
-  <div>
-    <h1>Commands</h1>
-  </div>
+  <DashboardPanel id="commands">
+    <template #header>
+      <DashboardNavbar title="Commands"></DashboardNavbar>
+    </template>
+  </DashboardPanel>
 </template>
 <route lang="json">
 {

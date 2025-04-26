@@ -35,8 +35,7 @@ async function onSubmit(event: FormSubmitEvent<any>) {
   try {
     const res = await authStore.login(event.data)
     if (res) {
-      console.log(res)
-      router.push('/admin/home')
+      router.push('/')
     }
   } catch (e: any) {
     showToast.error({
@@ -71,7 +70,7 @@ async function onSubmit(event: FormSubmitEvent<any>) {
       <div class="flex flex-col">
         <UForm :validate="validate" :state="state" @submit="onSubmit" class="space-y-5">
           <UFormField
-            label="Username/email"
+            label="Username"
             name="username"
             size="lg"
             class="text-[var(--brand-dark)] dark:text-[var(--brand-light)]"

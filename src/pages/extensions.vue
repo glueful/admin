@@ -1,8 +1,10 @@
 <script lang="ts" setup></script>
 <template>
-  <div>
-    <h1>Extensions</h1>
-  </div>
+  <DashboardPanel id="extensions">
+    <template #header>
+      <DashboardNavbar title="Extensions"></DashboardNavbar>
+    </template>
+  </DashboardPanel>
 </template>
 <route lang="json">
 {

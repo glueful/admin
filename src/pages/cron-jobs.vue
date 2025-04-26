@@ -1,8 +1,10 @@
 <script lang="ts" setup></script>
 <template>
-  <div>
-    <h1>Cron Jobs</h1>
-  </div>
+  <DashboardPanel id="cron-jobs">
+    <template #header>
+      <DashboardNavbar title="Cron Jobs"></DashboardNavbar>
+    </template>
+  </DashboardPanel>
 </template>
 <route lang="json">
 {

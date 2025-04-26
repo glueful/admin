@@ -1,8 +1,10 @@
 <script lang="ts" setup></script>
 <template>
-  <div>
-    <h1>Permissions</h1>
-  </div>
+  <DashboardPanel id="permissions">
+    <template #header>
+      <DashboardNavbar title="Permissions"></DashboardNavbar>
+    </template>
+  </DashboardPanel>
 </template>
 <route lang="json">
 {

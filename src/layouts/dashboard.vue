@@ -39,8 +39,6 @@ const open = ref(true) // Set open to true by default on desktop
         <UserMenu :collapsed="collapsed" />
       </template>
     </DashboardSidebar>
-    <div class="min-h-screen bg-gray-50 dark:bg-[#121212] p-4">
-      <RouterView />
-    </div>
+    <RouterView />
   </DashboardGroup>
 </template>

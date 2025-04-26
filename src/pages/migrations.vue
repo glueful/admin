@@ -1,8 +1,10 @@
 <script lang="ts" setup></script>
 <template>
-  <div>
-    <h1>Migrations</h1>
-  </div>
+  <DashboardPanel id="migrations">
+    <template #header>
+      <DashboardNavbar title="Migrations"></DashboardNavbar>
+    </template>
+  </DashboardPanel>
 </template>
 <route lang="json">
 {

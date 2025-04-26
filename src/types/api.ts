@@ -40,17 +40,24 @@ export interface PaginatedResponse<T>
   }> {}
 
 // Domain-specific data interfaces for common API responses
+export interface UserProfile {
+  first_name: string | null
+  last_name: string | null
+  photo_uuid: string | null
+  photo_url: string | null
+}
+
 export interface User {
-  id: number | string
+  uuid: string
   username: string
   email: string
-  firstName?: string
-  lastName?: string
-  permissions?: string[]
-  roles?: string[]
-  isActive: boolean
-  createdAt: string
-  updatedAt: string
+  status: string
+  created_at: string
+  roles: string[]
+  profile: UserProfile
+  last_login: string
+  is_admin: boolean
+  remember_me: boolean
 }
 
 export interface TableMetadata {
