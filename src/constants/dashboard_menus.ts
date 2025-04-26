@@ -1,0 +1,48 @@
+export const dashboardMenus = [
+  {
+    label: 'Home',
+    icon: 'i-lucide-house',
+    to: '/',
+  },
+  {
+    label: 'Tables',
+    icon: 'i-lucide-table',
+    to: '/tables',
+  },
+  {
+    label: 'Migrations',
+    icon: 'i-lucide-folder-symlink',
+    to: '/migrations',
+  },
+  {
+    label: 'Commands',
+    icon: 'i-lucide-square-terminal',
+    to: '/commands',
+  },
+  {
+    label: 'Extensions',
+    icon: 'i-lucide-package',
+    to: '/extensions',
+  },
+  {
+    label: 'Cron Jobs',
+    icon: 'i-lucide-timer-reset',
+    to: '/cron-jobs',
+  },
+  {
+    label: 'Logs',
+    icon: 'i-lucide-square-activity',
+    to: '/logs',
+  },
+  {
+    label: 'Permissions',
+    icon: 'i-lucide-shield-check',
+    to: '/permissions',
+    iconSize: 'size-6',
+  },
+  {
+    label: 'Settings',
+    icon: 'i-lucide-settings',
+    to: '/settings',
+  },
+]

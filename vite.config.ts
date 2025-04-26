@@ -9,7 +9,26 @@ import Layouts from 'vite-plugin-vue-layouts'
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [vue(), vueDevTools(), VueRouter(), Layouts(), ui()],
+  plugins: [
+    vue(),
+    vueDevTools(),
+    VueRouter(),
+    Layouts(),
+    ui({
+      ui: {
+        button: {
+          slots: {
+            base: ['cursor-pointer'],
+          },
+        },
+        dropdownMenu: {
+          slots: {
+            item: ['cursor-pointer'],
+          },
+        },
+      },
+    }),
+  ],
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),

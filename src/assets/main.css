@@ -1,2 +1,78 @@
-@import 'tailwindcss';
+@import 'tailwindcss' theme(static);
 @import '@nuxt/ui';
+
+:root {
+  /* Brand Colors */
+  --brand-dark: #231f20;
+  --brand-medium: #747474;
+  --brand-light: #a3a3a3;
+
+  /* App Variables */
+  --appSidebarWidth: 70px;
+  --loginPageBg: #fafafa;
+  --ui-header-height: calc(var(--spacing) * 16);
+
+  /* Light Theme - Glueful */
+  /* Using brand colors for the light theme */
+  --ui-primary-50: #f8f8f8;
+  --ui-primary-100: #f0f0f0;
+  --ui-primary-200: #e4e4e4;
+  --ui-primary-300: #d1d1d1;
+  --ui-primary-400: #b4b4b4;
+  --ui-primary-500: var(--brand-light);
+  --ui-primary-600: var(--brand-medium);
+  --ui-primary-700: #5e5e5e;
+  --ui-primary-800: #3d3d3d;
+  --ui-primary-900: var(--brand-dark);
+  --ui-primary-950: #1a1718;
+
+  /* Primary color for components */
+  --ui-primary: var(--brand-dark);
+
+  /* Background and text colors */
+  --ui-bg: #ffffff;
+  --ui-text: var(--brand-dark);
+  --ui-text-secondary: var(--brand-medium);
+  --ui-border: var(--ui-primary-200/50);
+}
+
+.dark {
+  --appSidebarWidth: 70px;
+
+  /* Dark Theme - Glueful */
+  /* Using brand colors for the dark theme */
+  --ui-primary-50: #1a1718;
+  --ui-primary-100: var(--brand-dark);
+  --ui-primary-200: #3d3d3d;
+  --ui-primary-300: #5e5e5e;
+  --ui-primary-400: var(--brand-medium);
+  --ui-primary-500: #8a8a8a;
+  --ui-primary-600: var(--brand-light);
+  --ui-primary-700: #b4b4b4;
+  --ui-primary-800: #d1d1d1;
+  --ui-primary-900: #e4e4e4;
+  --ui-primary-950: #f8f8f8;
+
+  /* Primary color for components */
+  --ui-primary: var(--brand-light);
+
+  /* Background and text colors */
+  --ui-bg: #121212;
+  --ui-text: #f5f5f5;
+  --ui-text-secondary: var(--brand-light);
+  --ui-border: var(--ui-primary-300); /* Using a lighter tone from existing dark theme palette */
+
+  .logo {
+    background-image: url('../assets/logo_dark_theme.svg');
+  }
+}
+
+[data-state='open'] .logo {
+  background-image: url('../assets/logo_full.svg');
+}
+.logo {
+  background-image: url('../assets/logo.svg');
+  background-repeat: no-repeat;
+  width: 100px;
+  height: 40px;
+}
