@@ -18,9 +18,9 @@ export interface ColorModeSelectProps
 </script>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { useColorMode } from '@vueuse/core'
-import { useAppConfig } from '@/composables/appConfig'
+import { useAppConfig } from '@/components/composables/appConfig'
 
 defineOptions({ inheritAttrs: false })
 
@@ -28,6 +28,11 @@ defineProps<ColorModeSelectProps>()
 
 const colorMode: any = useColorMode()
 const appConfig: any = useAppConfig()
+const isMounted = ref(false)
+
+onMounted(() => {
+  isMounted.value = true
+})
 
 const items = computed(() => [
   { label: 'System', value: 'system', icon: appConfig.ui.icons.system },
@@ -46,7 +51,7 @@ const preference = computed({
 </script>
 
 <template>
-  <ClientOnly v-if="!colorMode?.forced">
+  <div v-if="isMounted && !colorMode?.forced">
     <USelectMenu
       v-model="preference"
       :search-input="false"
@@ -54,16 +59,15 @@ const preference = computed({
       :icon="preference?.icon"
       :items="items"
     />
-
-    <template #fallback>
-      <USelectMenu
-        :search-input="false"
-        v-bind="$attrs"
-        :model-value="items[0]"
-        :icon="items[0]?.icon"
-        :items="items"
-        disabled
-      />
-    </template>
-  </ClientOnly>
+  </div>
+  <div v-else>
+    <USelectMenu
+      :search-input="false"
+      v-bind="$attrs"
+      :model-value="items[0]"
+      :icon="items[0]?.icon"
+      :items="items"
+      disabled
+    />
+  </div>
 </template>

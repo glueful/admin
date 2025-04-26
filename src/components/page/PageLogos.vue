@@ -2,7 +2,7 @@
 import type { AppConfig } from '@/types/appConfig'
 import _appConfig from '#build/app.config'
 import theme from '@/components/themes/page-logos'
-import { tv } from '../../utils/tv'
+import { tv } from '../utils/tv'
 import type { PageMarqueeProps } from '../../types'
 
 const appConfigPageLogos = _appConfig as AppConfig & { uiPro: { pageLogos: Partial<typeof theme> } }

@@ -3,7 +3,7 @@ import type { AppConfig } from '@/types/appConfig'
 import type { ButtonProps } from '@nuxt/ui'
 import _appConfig from '#build/app.config'
 import theme from '@/components/themes/dashboard-sidebar-collapse'
-import { tv } from '../../utils/tv'
+import { tv } from '../utils/tv'
 
 const appConfigDashboardSidebarCollapse = _appConfig as AppConfig & {
   uiPro: { dashboardSidebarCollapse: Partial<typeof theme> }
@@ -33,8 +33,8 @@ export interface DashboardSidebarCollapseProps
 import { ref } from 'vue'
 import { useForwardProps } from 'reka-ui'
 import { reactivePick } from '@vueuse/core'
-import { useAppConfig } from '@/composables/appConfig'
-import { useDashboard } from '../../utils/dashboard'
+import { useAppConfig } from '@/components/composables/appConfig'
+import { useDashboard } from '../utils/dashboard'
 
 const props = withDefaults(defineProps<DashboardSidebarCollapseProps>(), {
   color: 'neutral',

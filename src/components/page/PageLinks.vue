@@ -3,7 +3,7 @@ import type { AppConfig } from '@/types/appConfig'
 import type { LinkProps } from '@nuxt/ui'
 import _appConfig from '#build/app.config'
 import theme from '@/components/themes/page-links'
-import { tv } from '../../utils/tv'
+import { tv } from '../utils/tv'
 
 const appConfigPageLinks = _appConfig as AppConfig & { uiPro: { pageLinks: Partial<typeof theme> } }
 
@@ -40,7 +40,7 @@ export interface PageLinksSlots<T> {
 <script setup lang="ts" generic="T extends PageLink">
 import { Primitive } from 'reka-ui'
 import { pickLinkProps } from '@nuxt/ui/utils/link'
-import { useAppConfig } from '@/composables/appConfig'
+import { useAppConfig } from '@/components/composables/appConfig'
 
 const props = withDefaults(defineProps<PageLinksProps<T>>(), {
   as: 'nav',

@@ -15,9 +15,9 @@ export interface ColorModeButtonProps
 </script>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { useColorMode } from '@vueuse/core'
-import { useAppConfig } from '@/composables/appConfig'
+import { useAppConfig } from '@/components/composables/appConfig'
 
 defineOptions({ inheritAttrs: false })
 
@@ -28,6 +28,11 @@ defineSlots<{
 
 const colorMode: any = useColorMode()
 const appConfig: any = useAppConfig()
+const isMounted = ref(false)
+
+onMounted(() => {
+  isMounted.value = true
+})
 
 const isDark = computed({
   get() {
@@ -40,7 +45,7 @@ const isDark = computed({
 </script>
 
 <template>
-  <ClientOnly v-if="!colorMode?.forced">
+  <div v-if="isMounted && !colorMode?.forced">
     <UButton
       :icon="isDark ? appConfig.ui.icons.dark : appConfig.ui.icons.light"
       color="neutral"
@@ -49,11 +54,10 @@ const isDark = computed({
       :aria-label="`Switch to ${isDark ? 'light' : 'dark'} mode`"
       @click="isDark = !isDark"
     />
-
-    <template #fallback>
-      <slot name="fallback">
-        <div class="size-8" />
-      </slot>
-    </template>
-  </ClientOnly>
+  </div>
+  <div v-else>
+    <slot name="fallback">
+      <div class="size-8" />
+    </slot>
+  </div>
 </template>

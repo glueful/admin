@@ -2,8 +2,8 @@
 import type { AppConfig } from '@/types/appConfig'
 import _appConfig from '#build/app.config'
 import theme from '@/components/themes/dashboard-group'
-import type { UseResizableProps } from '../../composables/useResizable'
-import { tv } from '../../utils/tv'
+import type { UseResizableProps } from '../composables/useResizable'
+import { tv } from '../utils/tv'
 
 const appConfig = _appConfig as AppConfig & { uiPro: { dashboardGroup: Partial<typeof theme> } }
 
@@ -27,7 +27,7 @@ export interface DashboardGroupSlots {
 <script setup lang="ts">
 import { ref } from 'vue'
 import { Primitive } from 'reka-ui'
-import { provideDashboardContext } from '../../utils/dashboard'
+import { provideDashboardContext } from '../utils/dashboard'
 
 const props = withDefaults(defineProps<DashboardGroupProps>(), {
   storage: 'cookie',

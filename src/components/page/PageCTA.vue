@@ -4,7 +4,7 @@ import type { AppConfig } from '@/types/appConfig'
 import type { ButtonProps } from '@nuxt/ui'
 import _appConfig from '#build/app.config'
 import theme from '@/components/themes/page-cta'
-import { tv } from '../../utils/tv'
+import { tv } from '../utils/tv'
 
 const appConfigPageCTA = _appConfig as AppConfig & { uiPro: { pageCTA: Partial<typeof theme> } }
 

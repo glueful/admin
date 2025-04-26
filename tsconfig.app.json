@@ -6,7 +6,7 @@
     "src/**/*.vue",
     "auto-imports.d.ts",
     "components.d.ts",
-    "typed-router.d.ts"
+    "./typed-router.d.ts"
   ],
   "exclude": ["src/**/__tests__/*"],
   "compilerOptions": {

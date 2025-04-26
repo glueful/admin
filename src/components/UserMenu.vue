@@ -1,21 +1,38 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { computed } from 'vue'
 import type { DropdownMenuItem } from '@nuxt/ui'
 import { useColorMode } from '@vueuse/core'
+import { useAuthStore } from '@/stores/auth'
+import { useRouter } from 'vue-router'
 
 defineProps<{
   collapsed?: boolean
 }>()
 
 const colorMode = useColorMode()
+const authStore = useAuthStore()
+const router = useRouter()
 
-const user = ref({
-  name: 'Benjamin Canac',
-  avatar: {
-    src: '',
-    alt: 'Benjamin Canac',
-  },
+// Get user data from auth store instead of hardcoding
+const user = computed(() => {
+  const fullName = authStore.user
+    ? `${authStore.user.profile.first_name || ''} ${authStore.user.profile.last_name || ''}`.trim()
+    : 'Super User'
+
+  return {
+    name: fullName,
+    avatar: {
+      src: authStore.user?.profile.photo_url || '', // Use the photo_url from the profile if available
+      alt: fullName[0],
+    },
+  }
 })
+
+// Handle logout function
+const handleLogout = async () => {
+  await authStore.logout()
+  router.push('/login')
+}
 
 const items = computed<DropdownMenuItem[][]>(() => [
   [
@@ -23,17 +40,10 @@ const items = computed<DropdownMenuItem[][]>(() => [
       type: 'label',
       label: user.value.name,
       avatar: user.value.avatar,
+      description: authStore.user?.email || '',
     },
   ],
   [
-    {
-      label: 'Profile',
-      icon: 'i-lucide-user',
-    },
-    {
-      label: 'Billing',
-      icon: 'i-lucide-credit-card',
-    },
     {
       label: 'Settings',
       icon: 'i-lucide-settings',
@@ -52,7 +62,6 @@ const items = computed<DropdownMenuItem[][]>(() => [
           checked: colorMode.value === 'light',
           onSelect(e: Event) {
             e.preventDefault()
-
             colorMode.value = 'light'
           },
         },
@@ -77,19 +86,7 @@ const items = computed<DropdownMenuItem[][]>(() => [
     {
       label: 'Documentation',
       icon: 'i-lucide-book-open',
-      to: 'https://ui3.nuxt.dev/getting-started/installation/pro/vue',
-      target: '_blank',
-    },
-    {
-      label: 'GitHub repository',
-      icon: 'simple-icons:github',
-      to: 'https://github.com/nuxt-ui-pro/dashboard-vue',
-      target: '_blank',
-    },
-    {
-      label: 'Upgrade to Pro',
-      icon: 'i-lucide-rocket',
-      to: 'https://ui.nuxt.com/pro/purchase',
+      to: 'http://localhost/glueful/docs/',
       target: '_blank',
     },
   ],
@@ -97,6 +94,7 @@ const items = computed<DropdownMenuItem[][]>(() => [
     {
       label: 'Log out',
       icon: 'i-lucide-log-out',
+      onClick: handleLogout,
     },
   ],
 ])
@@ -118,7 +116,7 @@ const items = computed<DropdownMenuItem[][]>(() => [
       variant="ghost"
       block
       :square="collapsed"
-      class="data-[state=open]:bg-(--ui-bg-elevated)"
+      class="data-[state=open]:bg-(--ui-bg-elevated) rounded-full"
       :ui="{
         trailingIcon: 'text-(--ui-text-dimmed)',
       }"

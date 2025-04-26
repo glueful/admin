@@ -3,27 +3,30 @@ import { fileURLToPath, URL } from 'node:url'
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import vueDevTools from 'vite-plugin-vue-devtools'
-import tailwindcss from '@tailwindcss/vite'
-import ui from '@nuxt/ui/vite'
 import VueRouter from 'unplugin-vue-router/vite'
+import ui from '@nuxt/ui/vite'
+import Layouts from 'vite-plugin-vue-layouts'
 
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
     vue(),
     vueDevTools(),
-    tailwindcss(),
+    VueRouter(),
+    Layouts(),
     ui({
-      colorMode: false,
       ui: {
-        colors: {
-          primary: 'zinc',
+        button: {
+          slots: {
+            base: ['cursor-pointer'],
+          },
+        },
+        dropdownMenu: {
+          slots: {
+            item: ['cursor-pointer'],
+          },
         },
       },
-    }),
-    VueRouter({
-      /* options */
-      routesFolder: ['src/pages'],
     }),
   ],
   resolve: {
