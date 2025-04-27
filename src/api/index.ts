@@ -76,7 +76,7 @@ const db = {
   },
 
   getTable: async (table: string): Promise<APIResponse<TableMetadata>> => {
-    return executeApiCall<TableMetadata>(useApi(`/admin/db/tables/${table}`).get().json())
+    return executeApiCall<TableMetadata>(useApi(`/admin/db/table/${table}`).get().json())
   },
 
   getTableData: async (

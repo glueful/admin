@@ -28,5 +28,6 @@ declare module 'vue-router/auto-routes' {
     '/permissions': RouteRecordInfo<'/permissions', '/permissions', Record<never, never>, Record<never, never>>,
     '/settings': RouteRecordInfo<'/settings', '/settings', Record<never, never>, Record<never, never>>,
     '/tables': RouteRecordInfo<'/tables', '/tables', Record<never, never>, Record<never, never>>,
+    '/tables/[name]': RouteRecordInfo<'/tables/[name]', '/tables/:name', { name: ParamValue<true> }, { name: ParamValue<false> }>,
   }
 }
