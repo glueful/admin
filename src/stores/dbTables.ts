@@ -54,7 +54,6 @@ export const useDBTablesStore = defineStore('dbTables', {
 
       try {
         const response: any = await api.db.getTables()
-        console.log(response)
         if (!response || response.success === false) {
           const errorMsg = response?.message || 'Failed to fetch tables'
           const errorCode = response?.code || 500
@@ -84,7 +83,6 @@ export const useDBTablesStore = defineStore('dbTables', {
 
       try {
         const response: any = await api.db.getTableData(tableName)
-        console.log(response)
         if (!response || response.success === false) {
           const errorMsg = response?.message || `Failed to fetch data for table: ${tableName}`
           const errorCode = response?.code || 500

@@ -1,12 +1,10 @@
 <script setup lang="ts">
 import type { TableColumn } from '@nuxt/ui'
-import { computed, h, ref, resolveComponent, useTemplateRef } from 'vue'
+import { computed, h, ref, resolveComponent, useTemplateRef, watch } from 'vue'
 
 const UCheckbox = resolveComponent('UCheckbox')
 const rowSelection = ref({})
 const table = useTemplateRef('table')
-const emit = defineEmits(['record-click', 'refresh-data'])
-const rowsPerPageOptions = ref(['25', '50', '100'])
 const props = defineProps({
   tableData: {
     type: Array as () => any[],
@@ -18,8 +16,8 @@ const props = defineProps({
     default: false,
   },
   pageSize: {
-    type: Number,
-    default: 25,
+    type: String,
+    default: '25',
   },
   totalItems: {
     type: Number,
@@ -42,12 +40,27 @@ const props = defineProps({
     default: () => [],
   },
 })
-const selectedPageSize = ref(25)
+
+const emit = defineEmits([
+  'refresh-data',
+  'update:page',
+  'update:page-size',
+  'onDelete',
+  'onShowEdit',
+])
 // Create pagination state
 const pagination = ref({
   pageIndex: props.initialPage - 1,
   pageSize: props.pageSize,
 })
+const columnPinning = ref({
+  left: [],
+  right: ['action'],
+})
+
+const rowsPerPageOptions = ref(['25', '50', '100'])
+const selectedPageSize = ref(props.pageSize)
+const showDelete = ref(false)
 
 // Helper function to check if a field should be masked for security
 function isSensitiveField(key: any) {
@@ -139,7 +152,7 @@ const columns = computed<TableColumn<any>[]>(() => {
   const dataColumns = Object.keys(sampleRecord).map((key) => {
     return {
       accessorKey: key,
-      header: key.charAt(0).toUpperCase() + key.slice(1).replace(/_/g, ' '),
+      header: key,
       cell: ({ row }: any) => {
         const value = row.getValue(key)
 
@@ -239,27 +252,66 @@ const columns = computed<TableColumn<any>[]>(() => {
     enableHiding: true,
   }))
 
+  const actionColumns: TableColumn<any>[] = [
+    {
+      id: 'action',
+    },
+  ]
+
   // Combine selection column with filtered data columns
-  return [...allColumns, ...finalColumns]
+  return [...allColumns, ...finalColumns, ...actionColumns]
 })
 
-function handleRowClick(row: any) {
-  emit('record-click', row.original)
+// function upperFirst(str: string) {
+//   return str.charAt(0).toUpperCase() + str.slice(1).replace(/_/g, ' ')
+// }
+function onDelete() {
+  const selectedRows = table.value?.tableApi
+    ?.getSelectedRowModel()
+    ?.rows.map((row) => row.original)
+    .filter((row) => row !== undefined)
+  console.log('Selected rows for deletion:', selectedRows)
+  emit('onDelete', selectedRows)
 }
-function upperFirst(str: string) {
-  return str.charAt(0).toUpperCase() + str.slice(1).replace(/_/g, ' ')
+
+function onShowEdit(row: any) {
+  console.log('Selected rows for edit:', row)
+  emit('onShowEdit', row)
 }
+
+watch(
+  () => selectedPageSize.value,
+  (newPageSize) => {
+    pagination.value.pageSize = newPageSize
+    console.log('Page size changed:', newPageSize)
+    emit('update:page-size', newPageSize)
+  },
+)
+
+watch(
+  () => rowSelection.value,
+  (newRowSelection) => {
+    showDelete.value = Object.keys(newRowSelection).length > 0
+  },
+)
 </script>
 <template>
   <div class="flex flex-col h-full">
-    <div class="flex flex-wrap items-center justify-end gap-1.5 mb-2">
+    <div class="flex flex-wrap items-center justify-end gap-2 mb-2">
+      <UButton
+        v-if="showDelete"
+        color="error"
+        variant="outline"
+        icon="i-tabler-trash"
+        @click="onDelete"
+      />
       <UDropdownMenu
         :items="
           table?.tableApi
             ?.getAllColumns()
             .filter((column) => column.getCanHide())
             .map((column) => ({
-              label: upperFirst(column.id),
+              label: column.id,
               type: 'checkbox' as const,
               checked: column.getIsVisible(),
               onUpdateChecked(checked: boolean) {
@@ -290,29 +342,54 @@ function upperFirst(str: string) {
           ref="table"
           sticky
           v-model:row-selection="rowSelection"
+          v-model:column-pinning="columnPinning"
           :data="props.tableData"
           :columns="columns"
           hover
-          @row-click="handleRowClick"
           class="min-h-96"
           :pagination="pagination"
           :pagination-options="{
             manualPagination: true,
           }"
-        />
+        >
+          <template #action-cell="{ row }">
+            <UButton
+              icon="i-tabler-arrow-right"
+              color="neutral"
+              variant="ghost"
+              aria-label="Actions"
+              @click="onShowEdit(row.original)"
+            />
+          </template>
+        </UTable>
       </template>
     </div>
     <!-- Pagination section -->
-    <div class="flex mt-4 border-t border-gray-200 dark:border-gray-700 pt-4 sticky bottom-0">
-      <UPagination
-        v-if="props.tableData.length > 0"
-        :default-page="pagination.pageIndex + 1"
-        :page="pagination.pageIndex + 1"
-        :items-per-page="pagination.pageSize"
-        :total="props.totalItems"
-        @update:page="(p) => (pagination.pageIndex = p - 1)"
-      />
-      <USelect v-model="selectedPageSize" :items="rowsPerPageOptions" class="w-2" />
+    <div class="flex mt-4 pt-4 sticky bottom-0 justify-between">
+      <div>
+        {{ pagination.pageIndex * Number(pagination.pageSize) + 1 }} to
+        {{ Math.min((pagination.pageIndex + 1) * Number(pagination.pageSize), props.totalItems) }}
+        of
+        {{ props.totalItems }}
+      </div>
+      <div class="flex">
+        <UPagination
+          v-if="props.tableData.length > 0"
+          :default-page="pagination.pageIndex + 1"
+          :page="pagination.pageIndex + 1"
+          :items-per-page="Number(pagination.pageSize)"
+          :total="props.totalItems"
+          @update:page="
+            (p: number) => {
+              console.log('Page:', p)
+              pagination.pageIndex = p - 1
+              emit('update:page', pagination)
+            }
+          "
+          class="mr-3"
+        />
+        <USelect v-model="selectedPageSize" :items="rowsPerPageOptions" class="w-20" />
+      </div>
     </div>
   </div>
 </template>
