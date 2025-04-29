@@ -159,7 +159,7 @@ function needsLength(type: string): boolean {
 }
 </script>
 <template>
-  <USlideover v-model:open="isOpen" :title="slideoverTitle" side="right">
+  <USlideover v-model:open="isOpen" :title="slideoverTitle" side="right" class="w-full max-w-lg">
     <template #body>
       <div class="space-y-4">
         <form @submit.prevent="handleSubmit">

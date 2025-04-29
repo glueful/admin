@@ -7,21 +7,11 @@ const route: any = useRoute()
 const tableStore = useDBTablesStore()
 const tableName = ref(route.params.name as string)
 const isLoading = ref(false)
-const hiddenColumns = ref()
 
 watch(
   () => route.params.name,
   async (newName) => {
     tableName.value = newName as string
-    if (tableName.value === 'auth_sessions') {
-      hiddenColumns.value = [
-        'access_token',
-        'refresh_token',
-        'token_fingerprint',
-        'user_agent',
-        'ip_address',
-      ]
-    }
     if (tableName.value) {
       isLoading.value = true
       tableStore.tableData = []
@@ -47,7 +37,6 @@ watch(
         :table-data="tableStore.tableData"
         :columns="tableStore.tableColumns"
         :is-loading="isLoading"
-        :hidden-columns="hiddenColumns"
         :total-items="tableStore.pagination.total"
         v-if="tableStore.tableData.length > 0 || tableStore.tableColumns.length > 0"
       >
