@@ -5,8 +5,8 @@ export const dashboardMenus = [
     to: '/',
   },
   {
-    label: 'Tables',
-    icon: 'i-lucide-table',
+    label: 'Tables Editor',
+    icon: 'i-lucide-database',
     to: '/tables',
   },
   {
@@ -21,7 +21,7 @@ export const dashboardMenus = [
   },
   {
     label: 'Extensions',
-    icon: 'i-lucide-package',
+    icon: 'i-lucide-blocks',
     to: '/extensions',
   },
   {

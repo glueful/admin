@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import router from '@/router'
 import { useDBTablesStore } from '@/stores/dbTables'
 import { onMounted, ref } from 'vue'
 
@@ -11,11 +12,21 @@ onMounted(async () => {
   isLoading.value = true
   await dbTablesStore.fetchTables()
   isLoading.value = false
+  router.push(`/tables/${dbTablesStore.tables[0]}`)
 })
 </script>
 <template>
   <DashboardPanel id="tables-list" :default-size="15" :min-size="15" :max-size="25">
-    <DashboardNavbar title="Tables"></DashboardNavbar>
+    <DashboardNavbar title="Tables">
+      <template #left>
+        <div class="flex items-center">
+          <span>Tables</span>
+        </div>
+      </template>
+      <template #right>
+        <UButton size="sm" color="primary" icon="i-lucide-plus"></UButton>
+      </template>
+    </DashboardNavbar>
     <div class="overflow-y-auto">
       <!-- Loading state -->
       <div v-if="isLoading" class="p-4 text-center">

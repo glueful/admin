@@ -14,6 +14,7 @@ export const useDBTablesStore = defineStore('dbTables', {
     tables: [],
     currentTable: null,
     tableData: [],
+    tableColumns: [],
     currentRecord: null,
     isLoading: false,
     dbError: null,
@@ -90,6 +91,7 @@ export const useDBTablesStore = defineStore('dbTables', {
         }
 
         this.tableData = response.data
+        this.tableColumns = response.columns || []
 
         // Update pagination info from the response
         this.pagination = {

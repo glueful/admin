@@ -124,6 +124,14 @@ const db = {
       useApi(`/admin/db/tables/${table}/data/${id}`).delete().json(),
     )
   },
+
+  executeQuery: async (queryObj: {
+    query: string
+    params?: any[]
+    allow_write?: boolean
+  }): Promise<APIResponse<any>> => {
+    return executeApiCall(useApi('/admin/db/query').post(queryObj).json())
+  },
 }
 
 // System API calls
