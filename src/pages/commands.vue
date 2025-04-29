@@ -95,7 +95,7 @@ async function executeQuery() {
   const query: SQLQuery = {
     query: sqlQuery.value,
     params: [],
-    allow_write: true, // You might want to control this based on permissions
+    // allow_write: false, // Uncomment if you want to allow write operations
   }
 
   try {
@@ -368,41 +368,6 @@ async function confirmDeleteAllQueries() {
                   <p>Columns available: {{ resultColumns.length > 0 ? 'Yes' : 'No' }}</p>
                 </div> -->
 
-                <!-- Native HTML Table Implementation (Fallback) -->
-                <!-- <div
-                  class="overflow-x-auto mb-4 border border-gray-200 dark:border-gray-700 rounded"
-                >
-                  <table class="w-full text-sm text-left">
-                    <thead class="bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300">
-                      <tr>
-                        <th
-                          v-for="column in resultColumns"
-                          :key="column.accessorKey"
-                          class="px-4 py-2 font-medium"
-                        >
-                          {{ column.header }}
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr
-                        v-for="(row, rowIndex) in resultRows"
-                        :key="rowIndex"
-                        class="border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800"
-                      >
-                        <td
-                          v-for="column in resultColumns"
-                          :key="`${rowIndex}-${column.accessorKey}`"
-                          class="px-4 py-2"
-                        >
-                          {{ row[column.accessorKey] === null ? '—' : row[column.accessorKey] }}
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div> -->
-
-                <!-- UTable Implementation (Original) -->
                 <div>
                   <UTable
                     :columns="resultColumns"

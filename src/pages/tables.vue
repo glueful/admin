@@ -1,19 +1,59 @@
 <script lang="ts" setup>
-import router from '@/router'
 import { useDBTablesStore } from '@/stores/dbTables'
 import { onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
+
+// Define the TableData interface
+interface TableColumn {
+  name: string
+  type: string
+  length: string | null
+  nullable: boolean
+  primary: boolean
+}
+
+interface TableData {
+  name: string
+  columns: TableColumn[]
+}
 
 // Get the DB tables store
 const dbTablesStore = useDBTablesStore()
 const isLoading = ref(true)
+const showNewTableSlideover = ref(false)
+const router = useRouter()
 
 // Load tables when component is mounted
 onMounted(async () => {
   isLoading.value = true
   await dbTablesStore.fetchTables()
   isLoading.value = false
-  router.push(`/tables/${dbTablesStore.tables[0]}`)
+  // Only navigate to the first table if we're on the exact /tables route
+  // and not already on a specific table page like /tables/some_table
+  if (dbTablesStore.tables.length > 0 && router.currentRoute.value.path === '/tables') {
+    router.push(`/tables/${dbTablesStore.tables[0]}`)
+  }
 })
+
+// Handle new table creation
+const handleCreateTable = async (tableData: TableData) => {
+  try {
+    // Here you would call your API to create the table
+    // For now, we'll just log the data
+    console.log('Creating table:', tableData)
+
+    // After successful creation, refresh the tables list
+    await dbTablesStore.fetchTables()
+
+    // Navigate to the newly created table
+    // Type assertion to fix the includes method error
+    if ((dbTablesStore.tables as string[]).includes(tableData.name)) {
+      router.push(`/tables/${tableData.name}`)
+    }
+  } catch (error) {
+    console.error('Error creating table:', error)
+  }
+}
 </script>
 <template>
   <DashboardPanel id="tables-list" :default-size="15" :min-size="15" :max-size="25">
@@ -24,7 +64,12 @@ onMounted(async () => {
         </div>
       </template>
       <template #right>
-        <UButton size="sm" color="primary" icon="i-lucide-plus"></UButton>
+        <UButton
+          size="sm"
+          color="primary"
+          icon="i-lucide-plus"
+          @click="showNewTableSlideover = true"
+        ></UButton>
       </template>
     </DashboardNavbar>
     <div class="overflow-y-auto">
@@ -66,6 +111,14 @@ onMounted(async () => {
   <DashboardPanel id="table-details">
     <RouterView />
   </DashboardPanel>
+
+  <!-- New Table Slideover -->
+  <TableSlideover
+    v-model:open="showNewTableSlideover"
+    slideoverTitle="Create New Table"
+    @submit="handleCreateTable"
+    @close="showNewTableSlideover = false"
+  />
 </template>
 <route lang="json">
 {
