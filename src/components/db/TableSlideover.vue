@@ -25,6 +25,16 @@ interface TableForeignKey {
   column: string
   references: string
   on: string
+  isLoadingColumns?: boolean
+}
+
+// Define a structure to hold column data for referenced tables
+interface ReferencedTableColumns {
+  [tableName: string]: {
+    columns: { label: string; value: string }[]
+    isLoading: boolean
+    error?: string
+  }
 }
 
 interface TableData {
@@ -66,6 +76,10 @@ const foreignKeys = ref<TableForeignKey[]>([])
 const isSubmitting = ref(false)
 // Track collapsible state for each column
 const collapsibleState = ref<Record<number, boolean>>({})
+// Track collapsible state for indexes
+const indexCollapsibleState = ref<Record<number, boolean>>({})
+// Track collapsible state for foreign keys
+const foreignKeyCollapsibleState = ref<Record<number, boolean>>({})
 
 // Reserved SQL keywords that shouldn't be used as column names or table names
 const reservedKeywords = [
@@ -491,12 +505,12 @@ const tabItems = ref<TabsItem[]>([
   },
   {
     label: 'Indexes',
-    icon: 'i-lucide-database',
+    icon: 'i-lucide-hash',
     slot: 'indexes-tab' as const,
   },
   {
     label: 'Foreign Keys',
-    icon: 'i-lucide-link',
+    icon: 'i-lucide-network',
     slot: 'foreign-keys-tab' as const,
   },
 ])
@@ -530,9 +544,84 @@ const tableOptions = computed(() => {
 const canAddForeignKey = computed(() => {
   return hasValidColumns.value && tableOptions.value.length > 0
 })
+
+// Store for fetched reference table columns
+const referencedTableColumns = ref<ReferencedTableColumns>({})
+
+// Function to fetch columns for a referenced table
+async function fetchTableColumns(tableName: string) {
+  if (!tableName || tableName.trim() === '') return
+
+  console.log('Fetching columns for table:', tableName)
+
+  // Initialize or reset the state for this table
+  if (!referencedTableColumns.value[tableName]) {
+    referencedTableColumns.value[tableName] = {
+      columns: [],
+      isLoading: true,
+      error: undefined,
+    }
+  } else {
+    referencedTableColumns.value[tableName].isLoading = true
+    referencedTableColumns.value[tableName].error = undefined
+  }
+
+  try {
+    const response = await dbTablesStore.fetchTableColumns(tableName)
+    console.log('API Response for columns:', response)
+
+    // Get the columns from the response
+    const columnsData = response ? response.columns || response : []
+    console.log('Column data:', columnsData)
+
+    // Transform columns to the format expected by USelect
+    if (Array.isArray(columnsData)) {
+      referencedTableColumns.value[tableName] = {
+        columns: columnsData.map((col: any) => {
+          const colName = col.name || col
+          return {
+            label: typeof colName === 'string' ? `${colName}` : colName,
+            value: typeof colName === 'string' ? colName : String(colName),
+          }
+        }),
+        isLoading: false,
+        error: undefined,
+      }
+    } else {
+      throw new Error('Invalid column data format')
+    }
+
+    console.log('Processed columns for UI:', referencedTableColumns.value[tableName].columns)
+  } catch (error: any) {
+    console.error('Error fetching columns:', error)
+    referencedTableColumns.value[tableName] = {
+      columns: [],
+      isLoading: false,
+      error: error?.message || 'Failed to load columns',
+    }
+  }
+}
+
+// Handle reference table change
+function onReferenceTableChange(tableName: any, fkIndex: number) {
+  const tableNameString = tableName ? String(tableName) : null
+  if (tableNameString) {
+    // Reset the references value when table changes
+    foreignKeys.value[fkIndex].references = ''
+
+    // Fetch columns for the selected table
+    fetchTableColumns(tableNameString)
+  }
+}
 </script>
 <template>
-  <USlideover v-model:open="isOpen" :title="slideoverTitle" side="right" class="w-full max-w-lg">
+  <USlideover
+    v-model:open="isOpen"
+    :title="slideoverTitle"
+    :close="{ onClick: () => handleClose() }"
+    side="right"
+    class="w-full max-w-lg"
+  >
     <template #body>
       <div class="space-y-4">
         <form @submit.prevent="handleSubmit">
@@ -703,39 +792,68 @@ const canAddForeignKey = computed(() => {
                     No indexes added yet. Click "Add Index" to add one.
                   </div>
                   <div v-else class="space-y-3">
-                    <div v-for="(index, i) in indexes" :key="i" class="border rounded-md p-3">
-                      <div class="flex items-center justify-between mb-3">
-                        <h4 class="text-sm font-medium">Index {{ i + 1 }}</h4>
-                        <UButton
-                          color="error"
-                          variant="ghost"
-                          icon="i-lucide-trash-2"
-                          size="xs"
-                          @click="removeIndex(i)"
-                          :disabled="isSubmitting"
-                        />
-                      </div>
-                      <div class="grid grid-cols-2 gap-4">
-                        <UFormField label="Type">
-                          <USelect
-                            v-model="index.type"
-                            :items="[
-                              { label: 'Regular Index', value: 'INDEX' },
-                              { label: 'Unique Index', value: 'UNIQUE' },
-                            ]"
+                    <div v-for="(index, i) in indexes" :key="i" class="border rounded-md">
+                      <UCollapsible v-model:open="indexCollapsibleState[i]" class="w-full">
+                        <div class="flex items-center w-full">
+                          <UButton
+                            class="group flex-1 flex items-center justify-between p-3 text-left w-full"
+                            color="neutral"
+                            variant="ghost"
+                            :trailing-icon="'i-lucide-settings-2'"
+                            :ui="{
+                              trailingIcon:
+                                'group-data-[state=open]:rotate-90 transition-transform duration-200',
+                            }"
+                          >
+                            <div class="flex flex-1 items-center justify-between">
+                              <!-- <div class="font-medium truncate max-w-[180px]">
+                                Index {{ i + 1 }}
+                              </div> -->
+                              <div class="text-xs text-gray-500 mr-2">
+                                {{ index.type }} on {{ index.column }}
+                              </div>
+                            </div>
+                          </UButton>
+                          <UButton
+                            color="error"
+                            variant="ghost"
+                            icon="i-lucide-trash-2"
+                            size="sm"
+                            class="mr-2"
+                            @click="removeIndex(i)"
                             :disabled="isSubmitting"
-                            class="w-full"
                           />
-                        </UFormField>
-                        <UFormField label="Column">
-                          <USelect
-                            v-model="index.column"
-                            :items="columns.map((col) => ({ label: col.name, value: col.name }))"
-                            :disabled="isSubmitting || columns.length === 0"
-                            class="w-full"
-                          />
-                        </UFormField>
-                      </div>
+                        </div>
+                        <template #content>
+                          <div class="p-3 pt-0">
+                            <div class="space-y-3">
+                              <div class="grid grid-cols-2 gap-4">
+                                <UFormField label="Type">
+                                  <USelect
+                                    v-model="index.type"
+                                    :items="[
+                                      { label: 'Regular Index', value: 'INDEX' },
+                                      { label: 'Unique Index', value: 'UNIQUE' },
+                                    ]"
+                                    :disabled="isSubmitting"
+                                    class="w-full"
+                                  />
+                                </UFormField>
+                                <UFormField label="Column">
+                                  <USelect
+                                    v-model="index.column"
+                                    :items="
+                                      columns.map((col) => ({ label: col.name, value: col.name }))
+                                    "
+                                    :disabled="isSubmitting || columns.length === 0"
+                                    class="w-full"
+                                  />
+                                </UFormField>
+                              </div>
+                            </div>
+                          </div>
+                        </template>
+                      </UCollapsible>
                     </div>
                   </div>
                 </div>
@@ -765,45 +883,77 @@ const canAddForeignKey = computed(() => {
                     No foreign keys added yet. Click "Add Foreign Key" to add one.
                   </div>
                   <div v-else class="space-y-3">
-                    <div v-for="(fk, i) in foreignKeys" :key="i" class="border rounded-md p-3">
-                      <div class="flex items-center justify-between mb-3">
-                        <h4 class="text-sm font-medium">Foreign Key {{ i + 1 }}</h4>
-                        <UButton
-                          color="error"
-                          variant="ghost"
-                          icon="i-lucide-trash-2"
-                          size="xs"
-                          @click="removeForeignKey(i)"
-                          :disabled="isSubmitting"
-                        />
-                      </div>
-                      <div class="space-y-3">
-                        <UFormField label="Column">
-                          <USelect
-                            v-model="fk.column"
-                            :items="columns.map((col) => ({ label: col.name, value: col.name }))"
-                            :disabled="isSubmitting || columns.length === 0"
-                            class="w-full"
-                          />
-                        </UFormField>
-                        <UFormField label="References Table">
-                          <USelect
-                            v-model="fk.on"
-                            :items="tableOptions"
-                            placeholder="Select referenced table"
-                            :disabled="isSubmitting || tableOptions.length === 0"
-                            class="w-full"
-                          />
-                        </UFormField>
-                        <UFormField label="References Column">
-                          <UInput
-                            v-model="fk.references"
-                            placeholder="Referenced column name"
+                    <div v-for="(fk, i) in foreignKeys" :key="i" class="border rounded-md">
+                      <UCollapsible v-model:open="foreignKeyCollapsibleState[i]" class="w-full">
+                        <div class="flex items-center w-full">
+                          <UButton
+                            class="group flex-1 flex items-center justify-between p-3 text-left"
+                            color="neutral"
+                            variant="ghost"
+                            :trailing-icon="'i-lucide-settings-2'"
+                            :ui="{
+                              trailingIcon:
+                                'group-data-[state=open]:rotate-90 transition-transform duration-200',
+                            }"
+                          >
+                            <div class="flex flex-1 items-center justify-between">
+                              <!-- <div class="font-medium truncate max-w-[180px]">
+                                Foreign Key {{ i + 1 }}
+                              </div> -->
+                              <div class="text-xs text-gray-500 mr-2">
+                                {{ fk.column }} → {{ fk.on }}.{{ fk.references }}
+                              </div>
+                            </div>
+                          </UButton>
+                          <UButton
+                            color="error"
+                            variant="ghost"
+                            icon="i-lucide-trash-2"
+                            size="sm"
+                            class="mr-2"
+                            @click="removeForeignKey(i)"
                             :disabled="isSubmitting"
-                            class="w-full"
                           />
-                        </UFormField>
-                      </div>
+                        </div>
+                        <template #content>
+                          <div class="p-3 pt-0">
+                            <div class="space-y-3">
+                              <UFormField label="Column">
+                                <USelect
+                                  v-model="fk.column"
+                                  :items="
+                                    columns.map((col) => ({ label: col.name, value: col.name }))
+                                  "
+                                  :disabled="isSubmitting || columns.length === 0"
+                                  class="w-full"
+                                />
+                              </UFormField>
+                              <UFormField label="References Table">
+                                <USelect
+                                  v-model="fk.on"
+                                  :items="tableOptions"
+                                  placeholder="Select referenced table"
+                                  :disabled="isSubmitting || tableOptions.length === 0"
+                                  class="w-full"
+                                  @update:model-value="onReferenceTableChange($event, i)"
+                                />
+                              </UFormField>
+                              <UFormField label="References Column">
+                                <USelect
+                                  v-model="fk.references"
+                                  :items="referencedTableColumns[fk.on]?.columns || []"
+                                  :loading="referencedTableColumns[fk.on]?.isLoading"
+                                  :disabled="isSubmitting || !fk.on"
+                                  :placeholder="!fk.on ? 'Select table first' : 'Select column'"
+                                  loading-icon="i-lucide-loader-2"
+                                  class="w-full"
+                                >
+                                </USelect>
+                              </UFormField>
+                            </div>
+                          </div>
+                        </template>
+                      </UCollapsible>
                     </div>
                   </div>
                 </div>

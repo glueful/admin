@@ -79,6 +79,12 @@ const db = {
     return executeApiCall<TableMetadata>(useApi(`/admin/db/table/${table}`).get().json())
   },
 
+  getTableColumns: async (table: string): Promise<APIResponse<TableMetadata['columns']>> => {
+    return executeApiCall<TableMetadata['columns']>(
+      useApi(`/admin/db/table/${table}/columns`).get().json(),
+    )
+  },
+
   getTableData: async (
     table: string,
     params?: { page?: number; perPage?: number; sort?: string; order?: 'asc' | 'desc' },

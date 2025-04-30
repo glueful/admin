@@ -15,6 +15,7 @@ export const useDBTablesStore = defineStore('dbTables', {
     currentTable: null,
     tableData: [],
     tableColumns: [],
+    columns: [],
     currentRecord: null,
     isLoading: false,
     dbError: null,
@@ -200,6 +201,29 @@ export const useDBTablesStore = defineStore('dbTables', {
       } catch (error: any) {
         this.dbError =
           error.message || `An error occurred while deleting record from table: ${tableName}`
+        throw error
+      } finally {
+        this.isLoading = false
+      }
+    },
+
+    async fetchTableColumns(tableName: string) {
+      this.isLoading = true
+      this.dbError = null
+
+      try {
+        const response: any = await api.db.getTableColumns(tableName)
+        if (!response || response.success === false) {
+          const errorMsg = response?.message || `Failed to fetch columns for table: ${tableName}`
+          const errorCode = response?.code || 500
+          throw { message: errorMsg, code: errorCode, data: response?.data || [] }
+        }
+
+        this.columns = response.data
+        return response.data
+      } catch (error: any) {
+        this.dbError =
+          error.message || `An error occurred while fetching columns for table: ${tableName}`
         throw error
       } finally {
         this.isLoading = false
