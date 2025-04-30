@@ -76,7 +76,7 @@ const db = {
   },
 
   getTable: async (table: string): Promise<APIResponse<TableMetadata>> => {
-    return executeApiCall<TableMetadata>(useApi(`/admin/db/tables/${table}`).get().json())
+    return executeApiCall<TableMetadata>(useApi(`/admin/db/table/${table}`).get().json())
   },
 
   getTableData: async (
@@ -123,6 +123,14 @@ const db = {
     return executeApiCall<{ deleted: boolean }>(
       useApi(`/admin/db/tables/${table}/data/${id}`).delete().json(),
     )
+  },
+
+  executeQuery: async (queryObj: {
+    query: string
+    params?: any[]
+    allow_write?: boolean
+  }): Promise<APIResponse<any>> => {
+    return executeApiCall(useApi('/admin/db/query').post(queryObj).json())
   },
 }
 

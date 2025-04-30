@@ -39,6 +39,17 @@ export interface PaginatedResponse<T>
     lastPage: number
   }> {}
 
+// Generic pagination interface that can be used across the application
+export interface Pagination {
+  current_page: number
+  per_page: number
+  total: number
+  last_page: number
+  has_more: boolean
+  from: number
+  to: number
+}
+
 // Domain-specific data interfaces for common API responses
 export interface UserProfile {
   first_name: string | null

@@ -14,15 +14,27 @@
     "format": "prettier --write src/"
   },
   "dependencies": {
+    "@codemirror/autocomplete": "^6.18.6",
+    "@codemirror/commands": "^6.8.1",
+    "@codemirror/lang-sql": "^6.8.0",
+    "@codemirror/language": "^6.11.0",
+    "@codemirror/language-data": "^6.5.1",
+    "@codemirror/state": "^6.5.2",
+    "@codemirror/theme-one-dark": "^6.1.2",
+    "@codemirror/view": "^6.36.6",
     "@iconify-json/lucide": "^1.2.39",
     "@iconify-json/tabler": "^1.2.17",
     "@nuxt/ui": "^3.1.0",
     "@vueuse/core": "^13.1.0",
+    "@vueuse/integrations": "^13.1.0",
+    "codemirror": "6.0.1",
     "h3": "^1.15.1",
     "pinia": "^3.0.1",
     "reka-ui": "^2.2.0",
+    "sortablejs": "^1.15.6",
     "tailwind-variants": "^1.0.0",
     "vue": "^3.5.13",
+    "vue-codemirror": "^6.1.1",
     "vue-router": "^4.5.1"
   },
   "devDependencies": {

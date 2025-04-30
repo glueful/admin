@@ -9,6 +9,7 @@ const router = useRouter()
 const authStore = useAuthStore()
 const showToast = useToastNotification()
 const passwordVisibility = ref(false)
+const isLoading = ref(false)
 
 // Add this session check that runs when the component mounts
 onMounted(() => {
@@ -33,7 +34,9 @@ const validate = (state: any): FormError[] => {
 
 async function onSubmit(event: FormSubmitEvent<any>) {
   try {
+    isLoading.value = true
     const res = await authStore.login(event.data)
+    isLoading.value = false
     if (res) {
       router.push('/')
     }
@@ -113,6 +116,7 @@ async function onSubmit(event: FormSubmitEvent<any>) {
             size="lg"
             label="Login"
             class="drop-shadow-xl cursor-pointer hover:opacity-90 transition-opacity"
+            loading-auto
           />
         </UForm>
       </div>

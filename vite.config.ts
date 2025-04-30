@@ -16,6 +16,9 @@ export default defineConfig({
     Layouts(),
     ui({
       ui: {
+        icons: {
+          loading: 'i-lucide-loader-circle',
+        },
         button: {
           slots: {
             base: ['cursor-pointer'],
