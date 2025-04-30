@@ -126,5 +126,10 @@ export function needsLength(type: string): boolean {
     'smallInteger',
     'mediumInteger',
     'tinyInteger',
+    'bigInteger',
+    'integer',
+    'mediumText',
+    'longText',
+    'text',
   ].includes(type)
 }

@@ -123,7 +123,7 @@ function addDefaultColumns() {
       {
         name: 'id',
         type: 'bigInteger',
-        length: null,
+        length: '20',
         nullable: false,
         primary: true,
         nameError: undefined,
@@ -391,7 +391,7 @@ const referencedTableColumns = ref<ReferencedTableColumns>({})
 async function fetchTableColumns(tableName: string) {
   if (!tableName || tableName.trim() === '') return
 
-  console.log('Fetching columns for table:', tableName)
+  console.debug('Fetching columns for table:', tableName)
 
   // Initialize or reset the state for this table
   if (!referencedTableColumns.value[tableName]) {
@@ -407,11 +407,11 @@ async function fetchTableColumns(tableName: string) {
 
   try {
     const response = await dbTablesStore.fetchTableColumns(tableName)
-    console.log('API Response for columns:', response)
+    console.debug('API Response for columns:', response)
 
     // Get the columns from the response
     const columnsData = response ? response.columns || response : []
-    console.log('Column data:', columnsData)
+    console.debug('Column data:', columnsData)
 
     // Transform columns to the format expected by USelect
     if (Array.isArray(columnsData)) {
@@ -430,7 +430,7 @@ async function fetchTableColumns(tableName: string) {
       throw new Error('Invalid column data format')
     }
 
-    console.log('Processed columns for UI:', referencedTableColumns.value[tableName].columns)
+    console.debug('Processed columns for UI:', referencedTableColumns.value[tableName].columns)
   } catch (error: any) {
     console.error('Error fetching columns:', error)
     referencedTableColumns.value[tableName] = {
