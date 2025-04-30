@@ -3,46 +3,14 @@ import { ref, computed, watch } from 'vue'
 import { useDBTablesStore } from '@/stores/dbTables'
 import { useSortable } from '@vueuse/integrations/useSortable'
 import type { TabsItem } from '@nuxt/ui'
-
-// Define column interface
-interface TableColumn {
-  name: string
-  type: string
-  length: string | null
-  nullable: boolean
-  primary: boolean
-  nameError?: string | undefined
-}
-
-// Define index interface
-interface TableIndex {
-  type: 'INDEX' | 'UNIQUE'
-  column: string
-}
-
-// Define foreign key interface
-interface TableForeignKey {
-  column: string
-  references: string
-  on: string
-  isLoadingColumns?: boolean
-}
-
-// Define a structure to hold column data for referenced tables
-interface ReferencedTableColumns {
-  [tableName: string]: {
-    columns: { label: string; value: string }[]
-    isLoading: boolean
-    error?: string
-  }
-}
-
-interface TableData {
-  name: string
-  columns: TableColumn[]
-  indexes: TableIndex[]
-  foreignKeys: TableForeignKey[]
-}
+import type {
+  ReferencedTableColumns,
+  TableColumn,
+  TableData,
+  TableForeignKey,
+  TableIndex,
+} from './types'
+import { reservedKeywords, columnTypes, formatDatabaseName, needsLength } from './db'
 
 // Props and emits definition
 const props = defineProps({
@@ -80,102 +48,6 @@ const collapsibleState = ref<Record<number, boolean>>({})
 const indexCollapsibleState = ref<Record<number, boolean>>({})
 // Track collapsible state for foreign keys
 const foreignKeyCollapsibleState = ref<Record<number, boolean>>({})
-
-// Reserved SQL keywords that shouldn't be used as column names or table names
-const reservedKeywords = [
-  'add',
-  'all',
-  'alter',
-  'and',
-  'any',
-  'as',
-  'asc',
-  'backup',
-  'between',
-  'case',
-  'check',
-  'column',
-  'constraint',
-  'create',
-  'database',
-  'default',
-  'delete',
-  'desc',
-  'distinct',
-  'drop',
-  'exec',
-  'exists',
-  'foreign',
-  'from',
-  'full',
-  'group',
-  'having',
-  'in',
-  'index',
-  'inner',
-  'insert',
-  'is',
-  'join',
-  'key',
-  'left',
-  'like',
-  'limit',
-  'not',
-  'null',
-  'or',
-  'order',
-  'outer',
-  'primary',
-  'procedure',
-  'right',
-  'rownum',
-  'select',
-  'set',
-  'table',
-  'top',
-  'truncate',
-  'union',
-  'unique',
-  'update',
-  'values',
-  'view',
-  'where',
-]
-
-// Column types
-const columnTypes = ref([
-  'bigInteger',
-  'binary',
-  'blob',
-  'boolean',
-  'char',
-  'date',
-  'dateTime',
-  'decimal',
-  'double',
-  'enum',
-  'float',
-  'geometry',
-  'integer',
-  'ipAddress',
-  'json',
-  'jsonb',
-  'longText',
-  'macAddress',
-  'mediumInteger',
-  'mediumText',
-  'smallInteger',
-  'string',
-  'text',
-  'time',
-  'timestamp',
-  'tinyInteger',
-  'tinyText',
-  'uuid',
-  'varchar',
-  'varbinary',
-  'year',
-])
 
 // Computed properties
 const isValid = computed(() => {
@@ -240,22 +112,6 @@ function validateColumnName(name: string): string | undefined {
 // Validate a table name based on database naming rules
 function validateTableName(name: string): string | undefined {
   return validateDatabaseName(name, 'table')
-}
-
-// Format a database name to follow naming conventions (replace spaces with underscores, etc.)
-function formatDatabaseName(name: string): string {
-  // Replace spaces with underscores
-  let formatted = name.replace(/\s+/g, '_')
-
-  // Remove special characters except underscores
-  formatted = formatted.replace(/[^a-zA-Z0-9_]/g, '')
-
-  // Ensure it starts with a letter or underscore
-  if (formatted && !/^[a-zA-Z_]/.test(formatted)) {
-    formatted = '_' + formatted
-  }
-
-  return formatted
 }
 
 // Add default columns function
@@ -411,23 +267,6 @@ function handleSubmit() {
     isSubmitting.value = false
     handleClose()
   }, 500)
-}
-
-// Helper to determine if a column type needs length specification
-function needsLength(type: string): boolean {
-  return [
-    'varchar',
-    'char',
-    'binary',
-    'varbinary',
-    'decimal',
-    'float',
-    'double',
-    'tinyText',
-    'smallInteger',
-    'mediumInteger',
-    'tinyInteger',
-  ].includes(type)
 }
 
 // Watch for changes in column names to validate them
