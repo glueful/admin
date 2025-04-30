@@ -4,9 +4,9 @@ import { useDBTablesStore } from '@/stores/dbTables'
 import { useSortable } from '@vueuse/integrations/useSortable'
 import type { TabsItem } from '@nuxt/ui'
 import type {
+  CreateTableRequest,
   ReferencedTableColumns,
   TableColumn,
-  TableData,
   TableForeignKey,
   TableIndex,
 } from './types'
@@ -55,17 +55,19 @@ const isValid = computed(() => {
     tableName.value.trim() !== '' &&
     !tableNameError.value &&
     columns.value.length > 0 &&
-    columns.value.every((col) => col.name.trim() !== '' && !col.nameError)
+    columns.value.every((col: TableColumn) => col.name.trim() !== '' && !col.nameError)
   )
 })
 
-const hasPrimaryKey = computed(() => {
-  return columns.value.some((col) => col.primary)
+const hasPrimaryKey = computed((): boolean => {
+  return columns.value.some((col: TableColumn) => col.options?.primary)
 })
 
 // Check if there are any valid columns with names
-const hasValidColumns = computed(() => {
-  return columns.value.length > 0 && columns.value.some((col) => col.name.trim() !== '')
+const hasValidColumns = computed((): boolean => {
+  return (
+    columns.value.length > 0 && columns.value.some((col: TableColumn) => col.name.trim() !== '')
+  )
 })
 
 // Validate a database object name (table or column) based on naming rules
@@ -123,33 +125,43 @@ function addDefaultColumns() {
       {
         name: 'id',
         type: 'bigInteger',
-        length: '20',
-        nullable: false,
-        primary: true,
+        options: {
+          length: '20',
+          nullable: false,
+          primary: true,
+          autoIncrement: true,
+        },
         nameError: undefined,
       },
       {
         name: 'uuid',
         type: 'char',
-        length: '12',
-        nullable: false,
-        primary: false,
+        options: {
+          length: '12',
+          nullable: false,
+          primary: false,
+        },
         nameError: undefined,
       },
       {
         name: 'created_at',
         type: 'timestamp',
-        length: null,
-        nullable: false,
-        primary: false,
+        options: {
+          length: null,
+          nullable: false,
+          primary: false,
+          default: 'CURRENT_TIMESTAMP',
+        },
         nameError: undefined,
       },
       {
         name: 'updated_at',
         type: 'timestamp',
-        length: null,
-        nullable: true,
-        primary: false,
+        options: {
+          length: null,
+          nullable: true,
+          primary: false,
+        },
         nameError: undefined,
       },
     ]
@@ -170,9 +182,12 @@ function addColumn() {
   columns.value.push({
     name: '',
     type: 'string',
-    length: '255', // Default length for string columns
-    nullable: true,
-    primary: columns.value.length === 0, // Make first column primary by default
+    options: {
+      length: '255', // Default length for string columns
+      nullable: true,
+      primary: columns.value.length === 0, // Make first column primary by default
+      autoIncrement: false,
+    },
     nameError: undefined,
   })
   // Set default open state for the new column
@@ -223,7 +238,11 @@ function handleClose() {
     tableName.value = ''
     tableNameError.value = undefined
     columns.value = []
+    indexes.value = []
+    foreignKeys.value = []
     collapsibleState.value = {}
+    indexCollapsibleState.value = {}
+    foreignKeyCollapsibleState.value = {}
   }, 100)
 }
 
@@ -234,33 +253,63 @@ function handleSubmit() {
   tableNameError.value = validateTableName(tableName.value)
 
   // Validate all column names one last time
-  columns.value.forEach((column) => {
+  columns.value.forEach((column: TableColumn) => {
     column.nameError = validateColumnName(column.name)
   })
 
   // If any errors exist, don't submit
-  if (tableNameError.value || columns.value.some((column) => column.nameError)) {
+  if (tableNameError.value || columns.value.some((column: TableColumn) => column.nameError)) {
     return
   }
 
   isSubmitting.value = true
 
-  // Prepare data for submission
-  const tableData: TableData = {
-    name: tableName.value.trim(),
-    columns: columns.value.map((col) => ({
+  // Prepare data for submission using the new CreateTableRequest format
+  // Explicitly type the createTableRequest as CreateTableRequest
+  const createTableRequest: CreateTableRequest = {
+    table_name: tableName.value.trim(),
+    columns: columns.value.map((col: TableColumn) => ({
       name: col.name.trim(),
       type: col.type,
-      length: needsLength(col.type) ? col.length : null,
-      nullable: col.nullable,
-      primary: col.primary,
+      options: {
+        length: needsLength(col.type) ? col.options.length : null,
+        nullable: col.options.nullable,
+        primary: col.options.primary,
+        autoIncrement: col.options.autoIncrement,
+        default: col.options.default,
+      },
     })),
-    indexes: indexes.value,
-    foreignKeys: foreignKeys.value,
+  }
+
+  // Add indexes if any exist
+  if (indexes.value.length > 0) {
+    // Filter out any indexes that don't have column names
+    const validIndexes = indexes.value.filter((index) => index.column)
+
+    if (validIndexes.length > 0) {
+      createTableRequest.indexes = validIndexes.map((index) => ({
+        type: index.type,
+        column: index.column,
+      }))
+    }
+  }
+
+  // Add foreign keys if any exist
+  if (foreignKeys.value.length > 0) {
+    // Filter out any foreign keys that don't have complete information
+    const validForeignKeys = foreignKeys.value.filter((fk) => fk.column && fk.references && fk.on)
+
+    if (validForeignKeys.length > 0) {
+      createTableRequest.foreign_keys = validForeignKeys.map((fk) => ({
+        column: fk.column,
+        references: fk.references,
+        on: fk.on,
+      }))
+    }
   }
 
   // Emit submit event with table data
-  emit('submit', tableData)
+  emit('submit', createTableRequest)
 
   // In a real implementation, you might want to wait for API response before closing
   setTimeout(() => {
@@ -326,7 +375,7 @@ watch(columnsContainer, (el) => {
       onEnd: () => {
         // Update collapsible state to match new column order
         const newState: Record<number, boolean> = {}
-        columns.value.forEach((_, index) => {
+        columns.value.forEach((_: any, index: any) => {
           newState[index] = collapsibleState.value[index] || false
         })
         collapsibleState.value = newState
@@ -411,7 +460,7 @@ async function fetchTableColumns(tableName: string) {
 
     // Get the columns from the response
     const columnsData = response ? response.columns || response : []
-    console.debug('Column data:', columnsData)
+    console.log('Column data:', columnsData)
 
     // Transform columns to the format expected by USelect
     if (Array.isArray(columnsData)) {
@@ -430,7 +479,7 @@ async function fetchTableColumns(tableName: string) {
       throw new Error('Invalid column data format')
     }
 
-    console.debug('Processed columns for UI:', referencedTableColumns.value[tableName].columns)
+    console.log('Processed columns for UI:', referencedTableColumns.value[tableName].columns)
   } catch (error: any) {
     console.error('Error fetching columns:', error)
     referencedTableColumns.value[tableName] = {
@@ -532,9 +581,9 @@ function onReferenceTableChange(tableName: any, fkIndex: number) {
                               </div>
                               <div class="text-xs text-gray-500 mr-2">
                                 {{ column.type
-                                }}{{ needsLength(column.type) ? `(${column.length})` : '' }}
-                                {{ column.primary ? '• Primary' : '' }}
-                                {{ column.nullable ? '• Nullable' : '' }}
+                                }}{{ needsLength(column.type) ? `(${column.options.length})` : '' }}
+                                {{ column.options.primary ? '• Primary' : '' }}
+                                {{ column.options.nullable ? '• Nullable' : '' }}
                               </div>
                             </div>
                           </UButton>
@@ -577,7 +626,7 @@ function onReferenceTableChange(tableName: any, fkIndex: number) {
                                 </UFormField>
                                 <UFormField label="Length">
                                   <UInput
-                                    v-model="column.length"
+                                    v-model="column.options.length"
                                     placeholder="255"
                                     type="number"
                                     min="1"
@@ -588,17 +637,32 @@ function onReferenceTableChange(tableName: any, fkIndex: number) {
                               </div>
                               <div class="flex flex-wrap gap-4">
                                 <UCheckbox
-                                  v-model="column.nullable"
+                                  v-model="column.options.nullable"
                                   label="Nullable"
                                   :disabled="isSubmitting"
                                 />
                                 <UCheckbox
-                                  v-model="column.primary"
+                                  v-model="column.options.primary"
                                   label="Primary"
-                                  :disabled="isSubmitting || (hasPrimaryKey && !column.primary)"
+                                  :disabled="
+                                    isSubmitting || (hasPrimaryKey && !column.options.primary)
+                                  "
+                                />
+                                <UCheckbox
+                                  v-model="column.options.autoIncrement"
+                                  label="Auto Increment"
+                                  :disabled="isSubmitting || !column.options.primary"
                                 />
                               </div>
                             </div>
+                            <UFormField label="Default Value" class="mt-4">
+                              <UInput
+                                v-model="column.options.default"
+                                placeholder="Default value"
+                                :disabled="isSubmitting"
+                                class="w-full"
+                              />
+                            </UFormField>
                           </div>
                         </template>
                       </UCollapsible>
@@ -682,7 +746,10 @@ function onReferenceTableChange(tableName: any, fkIndex: number) {
                                   <USelect
                                     v-model="index.column"
                                     :items="
-                                      columns.map((col) => ({ label: col.name, value: col.name }))
+                                      columns.map((col: any) => ({
+                                        label: col.name,
+                                        value: col.name,
+                                      }))
                                     "
                                     :disabled="isSubmitting || columns.length === 0"
                                     class="w-full"
@@ -761,7 +828,10 @@ function onReferenceTableChange(tableName: any, fkIndex: number) {
                                 <USelect
                                   v-model="fk.column"
                                   :items="
-                                    columns.map((col) => ({ label: col.name, value: col.name }))
+                                    columns.map((col: any) => ({
+                                      label: col.name,
+                                      value: col.name,
+                                    }))
                                   "
                                   :disabled="isSubmitting || columns.length === 0"
                                   class="w-full"

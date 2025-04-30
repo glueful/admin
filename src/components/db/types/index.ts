@@ -2,9 +2,14 @@
 export interface TableColumn {
   name: string
   type: string
-  length: string | null
-  nullable: boolean
-  primary: boolean
+  options: {
+    length?: number | string | null
+    nullable?: boolean
+    primary?: boolean
+    autoIncrement?: boolean
+    unique?: boolean
+    default?: any
+  }
   nameError?: string | undefined
 }
 
@@ -36,4 +41,29 @@ export interface TableData {
   columns: TableColumn[]
   indexes: TableIndex[]
   foreignKeys: TableForeignKey[]
+}
+
+// API request format for creating a table
+export interface CreateTableRequest {
+  table_name: string
+  columns: Array<{
+    name: string
+    type: string
+    options: {
+      length?: number | string | null
+      nullable?: boolean
+      primary?: boolean
+      autoIncrement?: boolean
+      default?: any
+    }
+  }>
+  indexes?: Array<{
+    type: 'INDEX' | 'UNIQUE'
+    column: string
+  }>
+  foreign_keys?: Array<{
+    column: string
+    references: string
+    on: string
+  }>
 }
