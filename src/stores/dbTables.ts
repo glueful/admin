@@ -124,33 +124,33 @@ export const useDBTablesStore = defineStore('dbTables', {
       }
     },
 
-    // async createTableRow(tableName: string, data: any) {
-    //   this.isLoading = true
-    //   this.dbError = null
+    async createTableRow(tableName: string, data: any) {
+      this.isLoading = true
+      this.dbError = null
 
-    //   try {
-    //     const response: any = await api.db.createTableData(tableName, data)
-    //     if (!response || response.success === false) {
-    //       const errorMsg = response?.message || `Failed to create record in table: ${tableName}`
-    //       const errorCode = response?.code || 500
-    //       throw { message: errorMsg, code: errorCode, data: response?.data || [] }
-    //     }
+      try {
+        const response: any = await api.db.createTableData(tableName, data)
+        if (!response || response.success === false) {
+          const errorMsg = response?.message || `Failed to create record in table: ${tableName}`
+          const errorCode = response?.code || 500
+          throw { message: errorMsg, code: errorCode, data: response?.data || [] }
+        }
 
-    //     // Refresh the table data to reflect the new record
-    //     await this.fetchTableData(tableName, {
-    //       page: this.pagination.page,
-    //       perPage: this.pagination.perPage,
-    //     })
+        // Refresh the table data to reflect the new record
+        await this.fetchTableData(tableName, {
+          page: this.pagination.page,
+          perPage: this.pagination.perPage,
+        })
 
-    //     return response.data
-    //   } catch (error: any) {
-    //     this.dbError =
-    //       error.message || `An error occurred while creating record in table: ${tableName}`
-    //     throw error
-    //   } finally {
-    //     this.isLoading = false
-    //   }
-    // },
+        return response.data
+      } catch (error: any) {
+        this.dbError =
+          error.message || `An error occurred while creating record in table: ${tableName}`
+        throw error
+      } finally {
+        this.isLoading = false
+      }
+    },
 
     async updateTableRow(tableName: string, id: string | number, data: any) {
       this.isLoading = true

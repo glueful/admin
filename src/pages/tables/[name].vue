@@ -39,6 +39,7 @@ watch(
         :is-loading="isLoading"
         :total-items="tableStore.pagination.total"
         v-if="tableStore.tableData.length > 0 || tableStore.tableColumns.length > 0"
+        :table-name="tableName"
       >
         <template #empty>
           <div class="flex flex-col items-center justify-center py-12 text-center">

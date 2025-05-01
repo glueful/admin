@@ -6,6 +6,10 @@ const UCheckbox = resolveComponent('UCheckbox')
 const rowSelection = ref({})
 const table = useTemplateRef('table')
 const props = defineProps({
+  tableName: {
+    type: String,
+    default: '',
+  },
   tableData: {
     type: Array as () => any[],
     default: () => [],
@@ -65,6 +69,7 @@ const columnPinning = ref({
 const rowsPerPageOptions = ref(['25', '50', '100'])
 const selectedPageSize = ref(props.pageSize)
 const showDelete = ref(false)
+const showEditTableSlideover = ref(false)
 
 // Helper function to check if a field should be masked for security
 function isSensitiveField(key: any) {
@@ -233,83 +238,6 @@ const columns = computed<TableColumn<any>[]>(() => {
       },
     }
   })
-  // const dataColumns = Object.keys(sampleRecord).map((key) => {
-  //   return {
-  //     accessorKey: key,
-  //     header: key,
-  //     cell: ({ row }: any) => {
-  //       const value = row.getValue(key)
-
-  //       // Handle sensitive fields (like passwords)
-  //       if (isSensitiveField(key)) {
-  //         return '••••••••'
-  //       }
-
-  //       // Format date fields
-  //       if (isDateField(key, value)) {
-  //         // return value
-  //         //   ? new Date(value).toLocaleString('en-US', {
-  //         //       day: 'numeric',
-  //         //       month: 'short',
-  //         //       year: 'numeric',
-  //         //       hour: '2-digit',
-  //         //       minute: '2-digit',
-  //         //       hour12: false,
-  //         //     })
-  //         //   : '—'
-  //       }
-
-  //       // Handle boolean or status values
-  //       if (isStatusField(key, value)) {
-  //         const statusMap = {
-  //           active: 'bg-green-100 text-green-800',
-  //           inactive: 'bg-gray-100 text-gray-800',
-  //           pending: 'bg-yellow-100 text-yellow-800',
-  //           suspended: 'bg-red-100 text-red-800',
-  //           completed: 'bg-blue-100 text-blue-800',
-  //           failed: 'bg-red-100 text-red-800',
-  //         }
-  //         const lowercaseValue = typeof value === 'string' ? value.toLowerCase() : ''
-  //         const statusClass =
-  //           statusMap[lowercaseValue as keyof typeof statusMap] || 'bg-gray-100 text-gray-800'
-
-  //         return h(
-  //           'span',
-  //           {
-  //             class: `inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusClass}`,
-  //           },
-  //           value,
-  //         )
-  //       }
-
-  //       // Handle boolean values
-  //       if (typeof value === 'boolean') {
-  //         return value
-  //           ? h('span', { class: 'text-green-600' }, 'Yes')
-  //           : h('span', { class: 'text-red-600' }, 'No')
-  //       }
-
-  //       // Handle null values
-  //       if (value === null) {
-  //         return '—'
-  //       }
-
-  //       // For string values, truncate if too long and add a tooltip
-  //       if (typeof value === 'string' && value.length > props.maxContentLength) {
-  //         return h(
-  //           'div',
-  //           {
-  //             class: 'truncate max-w-xs',
-  //             title: value, // Add full text as tooltip
-  //           },
-  //           truncateText(value, props.maxContentLength),
-  //         )
-  //       }
-
-  //       return value
-  //     },
-  //   }
-  // })
 
   // Filter columns based on visibleColumns and hiddenColumns props
   let finalColumns = [...dataColumns]
@@ -363,6 +291,11 @@ function onShowEdit(row: any) {
   emit('onShowEdit', row)
 }
 
+function onShowEditColumns() {
+  console.log('Selected columns for edit:', props.columns)
+  showEditTableSlideover.value = true
+}
+
 watch(
   () => selectedPageSize.value,
   (newPageSize) => {
@@ -383,7 +316,7 @@ watch(
   <div class="flex flex-col h-full">
     <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
       <div>
-        <UButton variant="outline" icon="i-lucide-table-properties" @click="onDelete" />
+        <UButton variant="outline" icon="i-lucide-table-properties" @click="onShowEditColumns()" />
       </div>
       <div>
         <UButton
@@ -484,4 +417,11 @@ watch(
       </div>
     </div>
   </div>
+
+  <EditTableSlideover
+    v-model:open="showEditTableSlideover"
+    slideoverTitle="Edit Table"
+    :columnData="props.columns"
+    :tableName="props.tableName"
+  />
 </template>

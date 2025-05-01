@@ -11,9 +11,9 @@ const useApi = createFetch({
       const authStore = useAuthStore()
 
       // If the token is expiring soon, try to refresh it first
-      if (authStore.isAuthenticated && authStore.isTokenExpiringSoon) {
-        await authStore.refreshAccessToken()
-      }
+      // if (authStore.isAuthenticated && authStore.isTokenExpiringSoon) {
+      //   await authStore.refreshAccessToken()
+      // }
 
       // Set default headers
       options.headers = {

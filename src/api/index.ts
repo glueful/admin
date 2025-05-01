@@ -110,6 +110,13 @@ const db = {
     return executeApiCall<TableData>(useApi(`/admin/db/table/create`).post(data).json())
   },
 
+  createTableData: async (
+    table: string,
+    data: Record<string, any>,
+  ): Promise<APIResponse<TableData>> => {
+    return executeApiCall<TableData>(useApi(`/admin/db/tables/${table}/data`).post(data).json())
+  },
+
   updateTableData: async (
     table: string,
     id: string,

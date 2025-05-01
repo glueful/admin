@@ -32,7 +32,15 @@ const props = defineProps({
   },
   slideoverTitle: {
     type: String,
-    default: 'Create New Table',
+    default: 'Edit Table',
+  },
+  columnData: {
+    type: Array,
+    default: () => [],
+  },
+  tableName: {
+    type: String,
+    default: '',
   },
 })
 
@@ -59,7 +67,7 @@ const isSubmitting = computed({
 })
 
 // Form state
-const tableName = ref('')
+const tableName = ref(props.tableName || '')
 const tableNameError = ref<string | undefined>(undefined)
 const columns = ref<TableColumn[]>([])
 const indexes = ref<TableIndex[]>([])
@@ -135,67 +143,143 @@ function validateColumnName(name: string): string | undefined {
 
 // Validate a table name based on database naming rules
 function validateTableName(name: string): string | undefined {
-  return validateDatabaseName(name, 'table')
+  if (!name.trim()) {
+    return `Table name is required`
+  }
+
+  if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(name)) {
+    return `Table name must start with letter or underscore and contain only letters, numbers, and underscores`
+  }
+
+  if (reservedKeywords.includes(name.toLowerCase())) {
+    return `Table name cannot be a reserved SQL keyword`
+  }
+
+  // Skip duplicate validation if it's the same as the original table name
+  if (props.tableName && name.toLowerCase() === props.tableName.toLowerCase()) {
+    return undefined
+  }
+
+  // For table names, check if it already exists in the database
+  const existingTables = dbTablesStore.tables as any[]
+  const isDuplicate = existingTables.some((table) => {
+    // Check if table is a string or an object with a name property
+    if (typeof table === 'string') {
+      return table.toLowerCase() === name.toLowerCase()
+    } else if (table && typeof table === 'object' && table.name) {
+      return table.name.toLowerCase() === name.toLowerCase()
+    }
+    return false
+  })
+
+  if (isDuplicate) {
+    return `Table '${name}' already exists in the database`
+  }
+
+  return undefined
 }
 
-// Add default columns function
-function addDefaultColumns() {
-  // Clear existing columns first
-  if (columns.value.length === 0) {
-    // Define default columns
-    const defaultColumns = [
-      {
-        name: 'id',
-        type: 'BIGINT',
-        options: {
-          length: '20',
-          nullable: false,
-          primary: true,
-          autoIncrement: true,
-        },
-        nameError: undefined,
-      },
-      {
-        name: 'uuid',
-        type: 'CHAR',
-        options: {
-          length: '12',
-          nullable: false,
-          primary: false,
-        },
-        nameError: undefined,
-      },
-      {
-        name: 'created_at',
-        type: 'TIMESTAMP',
-        options: {
-          length: null,
-          nullable: false,
-          primary: false,
-          default: 'CURRENT_TIMESTAMP',
-        },
-        nameError: undefined,
-      },
-      {
-        name: 'updated_at',
-        type: 'TIMESTAMP',
-        options: {
-          length: null,
-          nullable: true,
-          primary: false,
-        },
-        nameError: undefined,
-      },
-    ]
+// Function to parse and extract column data from the provided structure
+function processColumnData() {
+  // Don't process if no data is available
+  if (!props.columnData || props.columnData.length === 0) return
 
-    // Add the default columns
-    defaultColumns.forEach((column) => {
-      const index = columns.value.length
-      columns.value.push(column)
-      // Set collapsed state by default
-      collapsibleState.value[index] = false
+  // Clear existing data
+  columns.value = []
+  indexes.value = []
+  foreignKeys.value = []
+
+  // Process columns and extract indexes
+  const uniqueIndexes = new Map()
+
+  props.columnData.forEach((col: any, idx: number) => {
+    // Extract column type and length from format like "varchar(255)"
+    let type = col.type
+    let length: string | null = null
+    const typeMatch = col.type.match(/([a-zA-Z]+)\(([^)]+)\)/)
+
+    if (typeMatch) {
+      type = typeMatch[1].toUpperCase() // e.g., "VARCHAR"
+      length = typeMatch[2] // e.g., "255"
+    }
+
+    // Convert to internal column format
+    const column: TableColumn = {
+      name: col.name,
+      type: type.toUpperCase(),
+      options: {
+        length: length,
+        nullable: col.nullable,
+        primary: col.is_primary,
+        autoIncrement: col.extra?.includes('auto_increment'),
+        default: col.default,
+      },
+      nameError: undefined,
+    }
+
+    // Add the column
+    columns.value.push(column)
+
+    // Set default collapse state
+    collapsibleState.value[idx] = false
+
+    // Process indexes
+    if (col.indexes && col.indexes.length > 0) {
+      col.indexes.forEach((idx: any) => {
+        // Skip PRIMARY KEY indexes entirely since they're handled by the column's primary flag
+        if (idx.name === 'PRIMARY' || idx.type === 'PRIMARY KEY') return
+
+        // For non-primary indexes, use the name as the key to avoid duplicates
+        const indexKey = idx.name
+
+        if (!uniqueIndexes.has(indexKey)) {
+          let indexType = 'INDEX'
+
+          if (idx.type === 'UNIQUE') {
+            indexType = 'UNIQUE'
+          }
+
+          uniqueIndexes.set(indexKey, {
+            type: indexType,
+            column: col.name,
+            name: idx.name,
+          })
+        }
+      })
+    }
+
+    // Process foreign keys if present (in the relationships array)
+    if (col.relationships && col.relationships.length > 0) {
+      col.relationships.forEach((rel: any) => {
+        // console.log('Processing relationship:', rel)
+
+        const foreignKey = {
+          column: rel.column,
+          references: rel.references_column || 'id',
+          on: rel.references_table || '',
+          // Store additional properties for potential future use
+          constraint: rel.constraint,
+          on_update: rel.on_update,
+          on_delete: rel.on_delete,
+        }
+
+        foreignKeys.value.push(foreignKey)
+
+        // Fetch columns for this referenced table to populate the dropdown
+        if (rel.references_table) {
+          fetchTableColumns(rel.references_table)
+        }
+      })
+    }
+  })
+
+  // Convert indexes map to array and add to indexes value
+  uniqueIndexes.forEach((index) => {
+    indexes.value.push({
+      type: index.type === 'PRIMARY KEY' ? 'PRIMARY KEY' : index.type,
+      column: index.column,
     })
-  }
+  })
 }
 
 // Methods
@@ -396,8 +480,13 @@ watch(tableName, (newName) => {
 // Watch for slideover opening to add default columns
 watch(isOpen, (isOpen) => {
   if (isOpen) {
-    // Add default columns when the slideover opens
-    addDefaultColumns()
+    // Set the table name from props
+    tableName.value = props.tableName || ''
+
+    if (props.columnData && props.columnData.length > 0) {
+      // Process the incoming column data to populate the form when editing
+      processColumnData()
+    }
   }
 })
 
@@ -485,7 +574,7 @@ const referencedTableColumns = ref<ReferencedTableColumns>({})
 async function fetchTableColumns(tableName: string) {
   if (!tableName || tableName.trim() === '') return
 
-  console.debug('Fetching columns for table:', tableName)
+  // console.debug('Fetching columns for table:', tableName)
 
   // Initialize or reset the state for this table
   if (!referencedTableColumns.value[tableName]) {
@@ -501,11 +590,11 @@ async function fetchTableColumns(tableName: string) {
 
   try {
     const response = await dbTablesStore.fetchTableColumns(tableName)
-    console.debug('API Response for columns:', response)
+    // console.debug('API Response for columns:', response)
 
     // Get the columns from the response
     const columnsData = response ? response.columns || response : []
-    console.log('Column data:', columnsData)
+    // console.log('Column data:', columnsData)
 
     // Transform columns to the format expected by USelect
     if (Array.isArray(columnsData)) {
@@ -524,7 +613,7 @@ async function fetchTableColumns(tableName: string) {
       throw new Error('Invalid column data format')
     }
 
-    console.log('Processed columns for UI:', referencedTableColumns.value[tableName].columns)
+    // console.log('Processed columns for UI:', referencedTableColumns.value[tableName].columns)
   } catch (error: any) {
     console.error('Error fetching columns:', error)
     referencedTableColumns.value[tableName] = {
@@ -748,7 +837,7 @@ function onReferenceTableChange(tableName: any, fkIndex: number) {
                       <UCollapsible v-model:open="indexCollapsibleState[i]" class="w-full">
                         <div class="flex items-center w-full">
                           <UButton
-                            class="group flex-1 flex items-center justify-between p-3 text-left w-full"
+                            class="group flex-1 flex items-center justify-between p-3 text-left"
                             color="neutral"
                             variant="ghost"
                             :trailing-icon="'i-lucide-settings-2'"
@@ -938,7 +1027,7 @@ function onReferenceTableChange(tableName: any, fkIndex: number) {
           :loading="isSubmitting"
           :disabled="!isValid || isSubmitting"
           @click="handleSubmit"
-          label="Create Table"
+          label="Save Changes"
         />
       </div>
     </template>
