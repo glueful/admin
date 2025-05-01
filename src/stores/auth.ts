@@ -96,9 +96,54 @@ export const useAuthStore = defineStore('auth', {
       this.user = null
       localStorage.clear()
     },
+
     async refreshAccessToken() {
-      /* ... */
+      // Only attempt to refresh if we have a refresh token
+      if (!this.refreshToken) {
+        return false
+      }
+
+      try {
+        this.isLoading = true
+        this.authError = null
+
+        // Call the API refresh token endpoint
+        const response = await api.auth.refreshToken(this.refreshToken)
+
+        // Extract token data from response
+        const tokenData = response.data.tokens
+        this.user = response.data.user
+
+        // Calculate expiration time from expires_in (in seconds)
+        const expirationTime = new Date()
+        expirationTime.setSeconds(expirationTime.getSeconds() + tokenData.expires_in)
+
+        // Set updated authentication state
+        this.setTokens({
+          accessToken: tokenData.access_token,
+          refreshToken: tokenData.refresh_token,
+          expiresAt: expirationTime.toISOString(),
+          tokenType: tokenData.token_type,
+        })
+
+        return true
+      } catch (error: any) {
+        // Handle token refresh errors
+        this.authError = {
+          success: false,
+          message: error?.message || 'Failed to refresh token',
+          code: error?.code || 401,
+          data: error?.data || { generalErrors: ['Session expired, please login again'] },
+        }
+
+        // If refresh fails, clear tokens and force re-login
+        this.clearTokens()
+        return false
+      } finally {
+        this.isLoading = false
+      }
     },
+
     clearTokens() {
       this.accessToken = null
       this.refreshToken = null

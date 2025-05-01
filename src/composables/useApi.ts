@@ -10,6 +10,11 @@ const useApi = createFetch({
     async beforeFetch({ options }) {
       const authStore = useAuthStore()
 
+      // If the token is expiring soon, try to refresh it first
+      if (authStore.isAuthenticated && authStore.isTokenExpiringSoon) {
+        await authStore.refreshAccessToken()
+      }
+
       // Set default headers
       options.headers = {
         // Default Content-Type as application/json
@@ -21,7 +26,6 @@ const useApi = createFetch({
       }
 
       // Add authorization header if we have a token and it wasn't explicitly set
-
       if (authStore.accessToken) {
         options.headers = {
           ...options.headers,
@@ -32,6 +36,16 @@ const useApi = createFetch({
       return { options }
     },
     onFetchError(ctx) {
+      // Handle 401 Unauthorized errors (potentially expired token)
+      if (ctx.response && ctx.response.status === 401) {
+        const authStore = useAuthStore()
+        // If token refresh failed earlier, logout the user
+        if (authStore.authError) {
+          authStore.logout()
+          // Could also redirect to login page here if needed
+        }
+      }
+
       if (ctx.data) {
         ctx.error = ctx.data // Modifies the error
       }
