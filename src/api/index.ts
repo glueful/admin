@@ -9,6 +9,7 @@ import type {
   PaginatedResponse,
   ValidationErrorResponse,
 } from '@/types/api'
+import type { CreateTableRequest } from '@/components/db/types'
 
 // Improved executeApiCall function with better error handling and type safety
 const executeApiCall = async <T>(apiCall: ReturnType<typeof useApi>) => {
@@ -79,6 +80,12 @@ const db = {
     return executeApiCall<TableMetadata>(useApi(`/admin/db/table/${table}`).get().json())
   },
 
+  getTableColumns: async (table: string): Promise<APIResponse<TableMetadata['columns']>> => {
+    return executeApiCall<TableMetadata['columns']>(
+      useApi(`/admin/db/table/${table}/columns`).get().json(),
+    )
+  },
+
   getTableData: async (
     table: string,
     params?: { page?: number; perPage?: number; sort?: string; order?: 'asc' | 'desc' },
@@ -99,11 +106,8 @@ const db = {
     return executeApiCall<TableData>(useApi(`/admin/db/tables/${table}/data/${id}`).get().json())
   },
 
-  createTableData: async (
-    table: string,
-    data: Record<string, any>,
-  ): Promise<APIResponse<TableData>> => {
-    return executeApiCall<TableData>(useApi(`/admin/db/tables/${table}/data`).post(data).json())
+  createTable: async (data: CreateTableRequest): Promise<APIResponse<TableData>> => {
+    return executeApiCall<TableData>(useApi(`/admin/db/table/create`).post(data).json())
   },
 
   updateTableData: async (

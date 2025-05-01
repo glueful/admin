@@ -1,27 +1,16 @@
 <script lang="ts" setup>
+import type { CreateTableRequest } from '@/components/db/types'
+import { useToastNotification } from '@/composables/useToastNotification'
 import { useDBTablesStore } from '@/stores/dbTables'
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-
-// Define the TableData interface
-interface TableColumn {
-  name: string
-  type: string
-  length: string | null
-  nullable: boolean
-  primary: boolean
-}
-
-interface TableData {
-  name: string
-  columns: TableColumn[]
-}
 
 // Get the DB tables store
 const dbTablesStore = useDBTablesStore()
 const isLoading = ref(true)
 const showNewTableSlideover = ref(false)
 const router = useRouter()
+const toast = useToastNotification()
 
 // Load tables when component is mounted
 onMounted(async () => {
@@ -36,22 +25,33 @@ onMounted(async () => {
 })
 
 // Handle new table creation
-const handleCreateTable = async (tableData: TableData) => {
+const handleCreateTable = async (tableData: CreateTableRequest) => {
   try {
     // Here you would call your API to create the table
     // For now, we'll just log the data
     console.log('Creating table:', tableData)
-
+    const response = await dbTablesStore.createTable(tableData)
     // After successful creation, refresh the tables list
-    await dbTablesStore.fetchTables()
-
-    // Navigate to the newly created table
-    // Type assertion to fix the includes method error
-    if ((dbTablesStore.tables as string[]).includes(tableData.name)) {
-      router.push(`/tables/${tableData.name}`)
+    if (response.success) {
+      await dbTablesStore.fetchTables()
+      // Show success notification
+      toast.success({
+        title: 'Table Created',
+        description: `Table ${tableData.table_name} created successfully.`,
+      })
+      // Navigate to the newly created table
+      // Type assertion to fix the includes method error
+      if ((dbTablesStore.tables as string[]).includes(tableData.table_name)) {
+        router.push(`/tables/${tableData.table_name}`)
+      }
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error creating table:', error)
+    toast.error({
+      title: 'Table Creation Failed',
+      description: error.message || 'An error occurred while creating the table',
+    })
+    // Show error notification
   }
 }
 </script>
