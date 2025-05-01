@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import api from '@/api'
+import type { CreateTableRequest } from '@/components/db/types'
 
 export interface TableQueryOptions {
   page?: number
@@ -123,33 +124,33 @@ export const useDBTablesStore = defineStore('dbTables', {
       }
     },
 
-    async createTableRow(tableName: string, data: any) {
-      this.isLoading = true
-      this.dbError = null
+    // async createTableRow(tableName: string, data: any) {
+    //   this.isLoading = true
+    //   this.dbError = null
 
-      try {
-        const response: any = await api.db.createTableData(tableName, data)
-        if (!response || response.success === false) {
-          const errorMsg = response?.message || `Failed to create record in table: ${tableName}`
-          const errorCode = response?.code || 500
-          throw { message: errorMsg, code: errorCode, data: response?.data || [] }
-        }
+    //   try {
+    //     const response: any = await api.db.createTableData(tableName, data)
+    //     if (!response || response.success === false) {
+    //       const errorMsg = response?.message || `Failed to create record in table: ${tableName}`
+    //       const errorCode = response?.code || 500
+    //       throw { message: errorMsg, code: errorCode, data: response?.data || [] }
+    //     }
 
-        // Refresh the table data to reflect the new record
-        await this.fetchTableData(tableName, {
-          page: this.pagination.page,
-          perPage: this.pagination.perPage,
-        })
+    //     // Refresh the table data to reflect the new record
+    //     await this.fetchTableData(tableName, {
+    //       page: this.pagination.page,
+    //       perPage: this.pagination.perPage,
+    //     })
 
-        return response.data
-      } catch (error: any) {
-        this.dbError =
-          error.message || `An error occurred while creating record in table: ${tableName}`
-        throw error
-      } finally {
-        this.isLoading = false
-      }
-    },
+    //     return response.data
+    //   } catch (error: any) {
+    //     this.dbError =
+    //       error.message || `An error occurred while creating record in table: ${tableName}`
+    //     throw error
+    //   } finally {
+    //     this.isLoading = false
+    //   }
+    // },
 
     async updateTableRow(tableName: string, id: string | number, data: any) {
       this.isLoading = true
@@ -224,6 +225,31 @@ export const useDBTablesStore = defineStore('dbTables', {
       } catch (error: any) {
         this.dbError =
           error.message || `An error occurred while fetching columns for table: ${tableName}`
+        throw error
+      } finally {
+        this.isLoading = false
+      }
+    },
+
+    async createTable(tableData: CreateTableRequest) {
+      this.isLoading = true
+      this.dbError = null
+
+      try {
+        const response: any = await api.db.createTable(tableData)
+        if (!response || response.success === false) {
+          const errorMsg = response?.message || `Failed to create table: ${tableData.table_name}`
+          const errorCode = response?.code || 500
+          throw { message: errorMsg, code: errorCode, data: response?.data || [] }
+        }
+
+        // Refresh the tables list to include the new table
+        await this.fetchTables()
+
+        return response
+      } catch (error: any) {
+        this.dbError =
+          error.message || `An error occurred while creating table: ${tableData.table_name}`
         throw error
       } finally {
         this.isLoading = false

@@ -10,11 +10,22 @@ import type {
   TableForeignKey,
   TableIndex,
 } from './types'
-import { reservedKeywords, columnTypes, formatDatabaseName, needsLength } from './db'
+import {
+  reservedKeywords,
+  columnTypes,
+  formatDatabaseName,
+  needsLength,
+  canAutoIncrement,
+  getAutoIncrementValue,
+} from './db'
 
 // Props and emits definition
 const props = defineProps({
   open: {
+    type: Boolean,
+    default: false,
+  },
+  submitting: {
     type: Boolean,
     default: false,
   },
@@ -24,7 +35,7 @@ const props = defineProps({
   },
 })
 
-const emit = defineEmits(['update:open', 'close', 'submit'])
+const emit = defineEmits(['update:open', 'close', 'submit', 'update:submitting'])
 
 // Get the store for table operations
 const dbTablesStore = useDBTablesStore()
@@ -35,13 +46,18 @@ const isOpen = computed({
   set: (value) => emit('update:open', value),
 })
 
+// Create a computed property for two-way binding of submitting state
+const isSubmitting = computed({
+  get: () => props.submitting,
+  set: (value) => emit('update:submitting', value),
+})
+
 // Form state
 const tableName = ref('')
 const tableNameError = ref<string | undefined>(undefined)
 const columns = ref<TableColumn[]>([])
 const indexes = ref<TableIndex[]>([])
 const foreignKeys = ref<TableForeignKey[]>([])
-const isSubmitting = ref(false)
 // Track collapsible state for each column
 const collapsibleState = ref<Record<number, boolean>>({})
 // Track collapsible state for indexes
@@ -124,7 +140,7 @@ function addDefaultColumns() {
     const defaultColumns = [
       {
         name: 'id',
-        type: 'bigInteger',
+        type: 'BIGINT',
         options: {
           length: '20',
           nullable: false,
@@ -135,7 +151,7 @@ function addDefaultColumns() {
       },
       {
         name: 'uuid',
-        type: 'char',
+        type: 'CHAR',
         options: {
           length: '12',
           nullable: false,
@@ -145,7 +161,7 @@ function addDefaultColumns() {
       },
       {
         name: 'created_at',
-        type: 'timestamp',
+        type: 'TIMESTAMP',
         options: {
           length: null,
           nullable: false,
@@ -156,7 +172,7 @@ function addDefaultColumns() {
       },
       {
         name: 'updated_at',
-        type: 'timestamp',
+        type: 'TIMESTAMP',
         options: {
           length: null,
           nullable: true,
@@ -179,14 +195,16 @@ function addDefaultColumns() {
 // Methods
 function addColumn() {
   const index = columns.value.length
+  const isPrimary = columns.value.length === 0 // Make first column primary by default
+
   columns.value.push({
     name: '',
-    type: 'string',
+    type: 'INT', // Use INT type instead of 'string' which is not a real database type
     options: {
-      length: '255', // Default length for string columns
-      nullable: true,
-      primary: columns.value.length === 0, // Make first column primary by default
-      autoIncrement: false,
+      length: '11',
+      nullable: !isPrimary, // Primary keys should not be nullable
+      primary: isPrimary,
+      autoIncrement: isPrimary, // Enable auto-increment by default for primary keys
     },
     nameError: undefined,
   })
@@ -268,17 +286,35 @@ function handleSubmit() {
   // Explicitly type the createTableRequest as CreateTableRequest
   const createTableRequest: CreateTableRequest = {
     table_name: tableName.value.trim(),
-    columns: columns.value.map((col: TableColumn) => ({
-      name: col.name.trim(),
-      type: col.type,
-      options: {
-        length: needsLength(col.type) ? col.options.length : null,
-        nullable: col.options.nullable,
-        primary: col.options.primary,
-        autoIncrement: col.options.autoIncrement,
-        default: col.options.default,
-      },
-    })),
+    columns: columns.value.map((col: TableColumn) => {
+      // Format type with length if needed
+      let formattedType = col.type
+      if (needsLength(col.type) && col.options.length) {
+        formattedType = `${col.type}(${col.options.length})`
+      }
+
+      // Store the auto-increment string value to be added to the SQL
+      let autoIncrementValue: string | undefined
+      if (col.options.autoIncrement && canAutoIncrement(col.type)) {
+        autoIncrementValue = getAutoIncrementValue()
+      }
+
+      return {
+        name: col.name.trim(),
+        type: formattedType,
+        options: {
+          // Length is now included in the type, so no need to send it separately
+          // Convert boolean nullable value to SQL constraint string
+          nullable: col.options.nullable ? 'NULL' : 'NOT NULL',
+          // Convert boolean primary key value to SQL constraint string
+          primary: col.options.primary ? 'PRIMARY KEY' : undefined,
+          // Keep autoIncrement as boolean like the interface expects
+          autoIncrement: col.options.autoIncrement && canAutoIncrement(col.type),
+          // If autoIncrement is true, add the autoIncrement string to the default field
+          default: autoIncrementValue || col.options.default,
+        },
+      }
+    }),
   }
 
   // Add indexes if any exist
@@ -358,6 +394,10 @@ watch(isOpen, (isOpen) => {
     // Add default columns when the slideover opens
     addDefaultColumns()
   }
+})
+
+watch(isSubmitting, (newSubmitting) => {
+  emit('update:submitting', newSubmitting)
 })
 
 // Template ref for sortable columns container
@@ -583,7 +623,7 @@ function onReferenceTableChange(tableName: any, fkIndex: number) {
                                 {{ column.type
                                 }}{{ needsLength(column.type) ? `(${column.options.length})` : '' }}
                                 {{ column.options.primary ? '• Primary' : '' }}
-                                {{ column.options.nullable ? '• Nullable' : '' }}
+                                {{ column.options.nullable ? '• Nullable' : '• NOT NULL' }}
                               </div>
                             </div>
                           </UButton>
@@ -651,7 +691,11 @@ function onReferenceTableChange(tableName: any, fkIndex: number) {
                                 <UCheckbox
                                   v-model="column.options.autoIncrement"
                                   label="Auto Increment"
-                                  :disabled="isSubmitting || !column.options.primary"
+                                  :disabled="
+                                    isSubmitting ||
+                                    !column.options.primary ||
+                                    !canAutoIncrement(column.type)
+                                  "
                                 />
                               </div>
                             </div>

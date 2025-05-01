@@ -50,9 +50,8 @@ export interface CreateTableRequest {
     name: string
     type: string
     options: {
-      length?: number | string | null
-      nullable?: boolean
-      primary?: boolean
+      nullable?: string
+      primary?: string
       autoIncrement?: boolean
       default?: any
     }
