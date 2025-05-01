@@ -30,21 +30,21 @@ const handleCreateTable = async (tableData: CreateTableRequest) => {
     // Here you would call your API to create the table
     // For now, we'll just log the data
     console.log('Creating table:', tableData)
-    // const response = await dbTablesStore.createTable(tableData)
-    // // After successful creation, refresh the tables list
-    // if (response.success) {
-    //   await dbTablesStore.fetchTables()
-    //   // Show success notification
-    //   toast.success({
-    //     title: 'Table Created',
-    //     description: `Table ${tableData.table_name} created successfully.`,
-    //   })
-    //   // Navigate to the newly created table
-    //   // Type assertion to fix the includes method error
-    //   if ((dbTablesStore.tables as string[]).includes(tableData.table_name)) {
-    //     router.push(`/tables/${tableData.table_name}`)
-    //   }
-    // }
+    const response = await dbTablesStore.createTable(tableData)
+    // After successful creation, refresh the tables list
+    if (response.success) {
+      await dbTablesStore.fetchTables()
+      // Show success notification
+      toast.success({
+        title: 'Table Created',
+        description: `Table ${tableData.table_name} created successfully.`,
+      })
+      // Navigate to the newly created table
+      // Type assertion to fix the includes method error
+      if ((dbTablesStore.tables as string[]).includes(tableData.table_name)) {
+        router.push(`/tables/${tableData.table_name}`)
+      }
+    }
   } catch (error: any) {
     console.error('Error creating table:', error)
     toast.error({

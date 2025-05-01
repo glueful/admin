@@ -52,7 +52,7 @@ export interface CreateTableRequest {
     options: {
       nullable?: string
       primary?: string
-      autoIncrement?: boolean
+      autoIncrement?: string | boolean
       default?: any
     }
   }>

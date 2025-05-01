@@ -293,11 +293,11 @@ function handleSubmit() {
         formattedType = `${col.type}(${col.options.length})`
       }
 
-      // Store the auto-increment string value to be added to the SQL
-      let autoIncrementValue: string | undefined
-      if (col.options.autoIncrement && canAutoIncrement(col.type)) {
-        autoIncrementValue = getAutoIncrementValue()
-      }
+      // Get the appropriate autoIncrement value if applicable
+      const autoIncrementValue =
+        col.options.autoIncrement && canAutoIncrement(col.type)
+          ? getAutoIncrementValue()
+          : undefined
 
       return {
         name: col.name.trim(),
@@ -308,10 +308,10 @@ function handleSubmit() {
           nullable: col.options.nullable ? 'NULL' : 'NOT NULL',
           // Convert boolean primary key value to SQL constraint string
           primary: col.options.primary ? 'PRIMARY KEY' : undefined,
-          // Keep autoIncrement as boolean like the interface expects
-          autoIncrement: col.options.autoIncrement && canAutoIncrement(col.type),
-          // If autoIncrement is true, add the autoIncrement string to the default field
-          default: autoIncrementValue || col.options.default,
+          // Convert boolean autoIncrement to SQL string value
+          autoIncrement: autoIncrementValue,
+          // Only include default if it has a value
+          default: col.options.default || undefined,
         },
       }
     }),
