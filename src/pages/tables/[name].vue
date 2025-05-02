@@ -2,13 +2,16 @@
 import { useToastNotification } from '@/composables/useToastNotification'
 import { useDBTablesStore } from '@/stores/dbTables'
 import { ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 
 const route: any = useRoute()
+const router = useRouter()
 const tableStore = useDBTablesStore()
 const tableName = ref(route.params.name as string)
 const isLoading = ref(false)
 const toast = useToastNotification()
+const showDeleteConfirm = ref(false)
+const isDeletingTable = ref(false)
 
 // Fetch table data when the component is mounted
 const fetchTableData = async () => {
@@ -17,6 +20,29 @@ const fetchTableData = async () => {
   tableStore.tableColumns = []
   await tableStore.fetchTableData(tableName.value)
   isLoading.value = false
+}
+
+// Function to handle table deletion
+const handleDeleteTable = async () => {
+  isDeletingTable.value = true
+  try {
+    await tableStore.deleteTable(tableName.value)
+    toast.success({
+      title: 'Table deleted',
+      description: `Table "${tableName.value}" has been deleted successfully.`,
+    })
+    // Redirect back to the tables list
+    router.push('/tables')
+  } catch (error: any) {
+    toast.error({
+      title: 'Delete failed',
+      description: error.message || `Failed to delete table "${tableName.value}".`,
+    })
+    console.error('Error deleting table:', error)
+  } finally {
+    isDeletingTable.value = false
+    showDeleteConfirm.value = false
+  }
 }
 
 watch(
@@ -53,6 +79,13 @@ const handleRefresh = async (schema: any) => {
   <div class="h-full flex flex-col">
     <DashboardNavbar :title="`${tableName}`" v-if="tableName">
       <template #right>
+        <UButton
+          color="error"
+          variant="outline"
+          icon="i-tabler-trash"
+          size="sm"
+          @click="showDeleteConfirm = true"
+        />
         <UButton size="sm" color="primary" icon="i-lucide-plus"> New Record </UButton>
       </template>
     </DashboardNavbar>
@@ -79,5 +112,20 @@ const handleRefresh = async (schema: any) => {
         </template>
       </DbTable>
     </div>
+
+    <!-- Confirmation Modal for Table Deletion -->
+    <ConfirmModal
+      v-model:open="showDeleteConfirm"
+      ModalIcon="i-tabler-trash"
+      :ModalContent="`Are you sure you want to delete the table <b>'${tableName}'</b>? All data will be permanently deleted. This action cannot be undone.`"
+      ModalConfirmText="Yes, Delete Table"
+      ModalCancelText="Cancel"
+      :is-loading="isDeletingTable"
+      @confirm="handleDeleteTable"
+      @close="showDeleteConfirm = false"
+      ModalIconClass="text-red-500 size-15 color-red-500"
+      :ui="{ content: 'divide-y-0 p-5', footer: 'flex justify-end space-x-2' }"
+      ModalConfirmColor="error"
+    />
   </div>
 </template>

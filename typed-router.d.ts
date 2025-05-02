@@ -19,7 +19,6 @@ declare module 'vue-router/auto-routes' {
    */
   export interface RouteNamedMap {
     '/': RouteRecordInfo<'/', '/', Record<never, never>, Record<never, never>>,
-    '/commands': RouteRecordInfo<'/commands', '/commands', Record<never, never>, Record<never, never>>,
     '/cron-jobs': RouteRecordInfo<'/cron-jobs', '/cron-jobs', Record<never, never>, Record<never, never>>,
     '/extensions': RouteRecordInfo<'/extensions', '/extensions', Record<never, never>, Record<never, never>>,
     '/login': RouteRecordInfo<'/login', '/login', Record<never, never>, Record<never, never>>,
@@ -27,6 +26,7 @@ declare module 'vue-router/auto-routes' {
     '/migrations': RouteRecordInfo<'/migrations', '/migrations', Record<never, never>, Record<never, never>>,
     '/permissions': RouteRecordInfo<'/permissions', '/permissions', Record<never, never>, Record<never, never>>,
     '/settings': RouteRecordInfo<'/settings', '/settings', Record<never, never>, Record<never, never>>,
+    '/sql': RouteRecordInfo<'/sql', '/sql', Record<never, never>, Record<never, never>>,
     '/tables': RouteRecordInfo<'/tables', '/tables', Record<never, never>, Record<never, never>>,
     '/tables/[name]': RouteRecordInfo<'/tables/[name]', '/tables/:name', { name: ParamValue<true> }, { name: ParamValue<false> }>,
   }
