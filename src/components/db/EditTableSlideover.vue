@@ -318,14 +318,21 @@ function addColumn() {
 function removeColumn(index: number) {
   const column = columns.value[index]
 
-  // Instead of removing the column, mark it as deleted
   if (column.disabled && column.name) {
     // For existing columns, track deletion for API purposes
     deletedColumns.value.push(column.name)
+    // Mark as deleted instead of removing (soft delete)
+    columns.value[index].deleted = true
+  } else {
+    // For newly added columns, remove them completely from the UI
+    columns.value.splice(index, 1)
+    // Update the collapsible state indices
+    const newState: Record<number, boolean> = {}
+    columns.value.forEach((_, idx) => {
+      newState[idx] = collapsibleState.value[idx < index ? idx : idx + 1] || false
+    })
+    collapsibleState.value = newState
   }
-
-  // Mark as deleted instead of removing
-  columns.value[index].deleted = true
 }
 
 function restoreColumn(index: number) {
@@ -354,13 +361,21 @@ function addIndex() {
 function removeIndex(index: number) {
   const idx = indexes.value[index]
 
-  // If this is an existing index, add it to the deleted indexes tracking array
   if (idx.disabled && idx.column) {
+    // For existing indexes, track deletion for API purposes
     deletedIndexes.value.push(idx.column)
+    // Mark as deleted instead of removing (soft delete)
+    indexes.value[index].deleted = true
+  } else {
+    // For newly added indexes, remove them completely from the UI
+    indexes.value.splice(index, 1)
+    // Update the collapsible state indices
+    const newState: Record<number, boolean> = {}
+    indexes.value.forEach((_, idx) => {
+      newState[idx] = indexCollapsibleState.value[idx < index ? idx : idx + 1] || false
+    })
+    indexCollapsibleState.value = newState
   }
-
-  // Mark as deleted instead of removing
-  indexes.value[index].deleted = true
 }
 
 function restoreIndex(index: number) {
@@ -390,13 +405,21 @@ function addForeignKey() {
 function removeForeignKey(index: number) {
   const fk: any = foreignKeys.value[index]
 
-  // If this is an existing foreign key, add it to the deleted foreign keys tracking array
   if (fk.disabled && fk.constraint) {
+    // For existing foreign keys, track deletion for API purposes
     deletedForeignKeys.value.push(fk.constraint)
+    // Mark as deleted instead of removing (soft delete)
+    foreignKeys.value[index].deleted = true
+  } else {
+    // For newly added foreign keys, remove them completely from the UI
+    foreignKeys.value.splice(index, 1)
+    // Update the collapsible state indices
+    const newState: Record<number, boolean> = {}
+    foreignKeys.value.forEach((_, idx) => {
+      newState[idx] = foreignKeyCollapsibleState.value[idx < index ? idx : idx + 1] || false
+    })
+    foreignKeyCollapsibleState.value = newState
   }
-
-  // Mark as deleted instead of removing
-  foreignKeys.value[index].deleted = true
 }
 
 function restoreForeignKey(index: number) {
