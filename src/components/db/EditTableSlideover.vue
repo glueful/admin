@@ -47,6 +47,20 @@ const props = defineProps({
 
 const toast = useToastNotification()
 
+// State for confirmation modals
+const showConfirmModal = ref(false)
+const showSaveConfirmModal = ref(false)
+const hasChanges = ref(false)
+const pendingChanges = ref<{
+  deletedColumns: string[]
+  deletedIndexes: string[]
+  deletedForeignKeys: string[]
+}>({
+  deletedColumns: [],
+  deletedIndexes: [],
+  deletedForeignKeys: [],
+})
+
 // Compute the full slideover title with database engine
 const fullSlideoverTitle = computed(() => {
   return `${props.slideoverTitle} | ${currentDbEngine.value.toUpperCase()}`
@@ -438,7 +452,16 @@ function restoreForeignKey(index: number) {
 }
 
 function handleClose() {
+  if (hasChanges.value) {
+    showConfirmModal.value = true
+  } else {
+    closeSlideoverImmediately()
+  }
+}
+
+function closeSlideoverImmediately() {
   isOpen.value = false
+  showConfirmModal.value = false
   emit('close')
 
   // Reset form
@@ -451,6 +474,10 @@ function handleClose() {
     collapsibleState.value = {}
     indexCollapsibleState.value = {}
     foreignKeyCollapsibleState.value = {}
+    deletedColumns.value = []
+    deletedIndexes.value = []
+    deletedForeignKeys.value = []
+    hasChanges.value = false
   }, 100)
 }
 
@@ -470,10 +497,55 @@ async function handleSubmit() {
     return
   }
 
+  // Check if there are any deletions and show confirmation modal if needed
+  const hasDeletedItems =
+    deletedColumns.value.length > 0 ||
+    deletedIndexes.value.length > 0 ||
+    deletedForeignKeys.value.length > 0 ||
+    columns.value.some((col) => col.disabled && col.deleted) ||
+    indexes.value.some((idx) => idx.disabled && idx.deleted) ||
+    foreignKeys.value.some((fk) => fk.disabled && fk.deleted)
+
+  if (hasDeletedItems) {
+    // Use Sets to prevent duplicate entries
+    const uniqueDeletedColumns = new Set([
+      ...deletedColumns.value,
+      ...columns.value.filter((col) => col.disabled && col.deleted).map((col) => col.name),
+    ])
+
+    const uniqueDeletedIndexes = new Set([
+      ...deletedIndexes.value,
+      ...indexes.value.filter((idx) => idx.disabled && idx.deleted).map((idx) => idx.column),
+    ])
+
+    const uniqueDeletedForeignKeys = new Set([
+      ...deletedForeignKeys.value,
+      ...foreignKeys.value
+        .filter((fk: any) => fk.disabled && fk.deleted && fk.constraint)
+        .map((fk: any) => fk.constraint as string),
+    ])
+
+    // Prepare the data to show in the confirmation modal
+    pendingChanges.value = {
+      deletedColumns: Array.from(uniqueDeletedColumns),
+      deletedIndexes: Array.from(uniqueDeletedIndexes),
+      deletedForeignKeys: Array.from(uniqueDeletedForeignKeys),
+    }
+
+    // Show confirmation modal
+    showSaveConfirmModal.value = true
+    return
+  }
+
+  // If no deletions or user confirmed, proceed with submission
+  submitSchemaChanges()
+}
+
+// Separate function to handle the actual submission after confirmation
+async function submitSchemaChanges() {
   isSubmitting.value = true
 
   // Prepare data for submission using the new CreateTableRequest format
-  // Explicitly type the createTableRequest as CreateTableRequest
   const createTableRequest: CreateTableRequest = {
     table_name: tableName.value.trim(),
     columns: columns.value
@@ -551,7 +623,6 @@ async function handleSubmit() {
   }
 
   console.log('Update Table Request:', createTableRequest)
-  // Emit submit event with table data
 
   try {
     const response = await dbTablesStore.updateTableSchema(createTableRequest)
@@ -571,6 +642,19 @@ async function handleSubmit() {
   }
   isSubmitting.value = false
   handleClose()
+}
+
+// Function to handle cancellation of the schema changes confirmation modal
+function cancelSchemaChangesConfirmation() {
+  // Hide the confirmation modal
+  showSaveConfirmModal.value = false
+
+  // Clean up the pendingChanges
+  // pendingChanges.value = {
+  //   deletedColumns: [],
+  //   deletedIndexes: [],
+  //   deletedForeignKeys: [],
+  // }
 }
 
 // Watch for changes in column names to validate them
@@ -612,6 +696,7 @@ watch(isOpen, (isOpen) => {
   if (isOpen) {
     // Set the table name from props
     tableName.value = props.tableName || ''
+    hasChanges.value = false
 
     if (props.columnData && props.columnData.length > 0) {
       // Process the incoming column data to populate the form when editing
@@ -765,14 +850,51 @@ function onReferenceTableChange(tableName: any, fkIndex: number) {
     fetchTableColumns(tableNameString)
   }
 }
+
+// Track changes for determining if the form has unsaved changes
+watch(
+  [columns, indexes, foreignKeys, deletedColumns, deletedIndexes, deletedForeignKeys],
+  () => {
+    // Check if there are any changes
+    hasChanges.value = hasFormChanges()
+  },
+  { deep: true },
+)
+
+// Function to determine if there are any unsaved changes
+function hasFormChanges() {
+  // 1. Check if there are any new items (not in the original data)
+  const hasNewColumns = columns.value.some((col) => !col.disabled)
+  const hasNewIndexes = indexes.value.some((idx) => !idx.disabled)
+  const hasNewForeignKeys = foreignKeys.value.some((fk) => !fk.disabled)
+
+  // 2. Check if there are any deleted items
+  const hasDeletedItems =
+    deletedColumns.value.length > 0 ||
+    deletedIndexes.value.length > 0 ||
+    deletedForeignKeys.value.length > 0
+
+  // 3. Check if any existing items are marked as deleted (soft delete)
+  const hasSoftDeletedItems =
+    columns.value.some((col) => col.disabled && col.deleted) ||
+    indexes.value.some((idx) => idx.disabled && idx.deleted) ||
+    foreignKeys.value.some((fk) => fk.disabled && fk.deleted)
+
+  return (
+    hasNewColumns || hasNewIndexes || hasNewForeignKeys || hasDeletedItems || hasSoftDeletedItems
+  )
+}
 </script>
 <template>
   <USlideover
     v-model:open="isOpen"
     :title="fullSlideoverTitle"
-    :close="{ onClick: () => handleClose() }"
+    :close="false"
     side="right"
     class="w-full max-w-lg"
+    :ui="{
+      footer: 'justify-end',
+    }"
   >
     <template #body>
       <div class="space-y-4">
@@ -1256,11 +1378,75 @@ function onReferenceTableChange(tableName: any, fkIndex: number) {
           type="button"
           color="primary"
           :loading="isSubmitting"
-          :disabled="!isValid || isSubmitting"
+          :disabled="!isValid || isSubmitting || !hasChanges"
           @click="handleSubmit"
           label="Save Changes"
         />
       </div>
     </template>
   </USlideover>
+
+  <ConfirmModal
+    v-model:open="showConfirmModal"
+    ModalTitle="Unsaved Changes"
+    ModalContent="You have unsaved changes to the table structure. Closing without saving will discard these changes."
+    ModalConfirmText="Discard Changes"
+    ModalCancelText="Continue Editing"
+    @confirm="closeSlideoverImmediately"
+    @close="showConfirmModal = false"
+  />
+
+  <!-- Schema Changes Confirmation Modal (when saving with deletions) -->
+  <ConfirmModal
+    v-model:open="showSaveConfirmModal"
+    ModalTitle="Confirm Schema Changes"
+    ModalContent=""
+    ModalConfirmText="Confirm & Save Changes"
+    ModalCancelText="Cancel"
+    @confirm="submitSchemaChanges"
+    @close="cancelSchemaChangesConfirmation"
+  >
+    <template #body>
+      <div class="space-y-4">
+        <p class="text-amber-600 font-medium">
+          Warning: You are about to delete the following database objects:
+        </p>
+
+        <!-- Columns to be deleted -->
+        <div v-if="pendingChanges.deletedColumns.length > 0" class="space-y-2">
+          <h4 class="font-medium">Columns:</h4>
+          <ul class="list-disc pl-5 space-y-1">
+            <li v-for="column in pendingChanges.deletedColumns" :key="column" class="text-sm">
+              {{ column }}
+            </li>
+          </ul>
+        </div>
+
+        <!-- Indexes to be deleted -->
+        <div v-if="pendingChanges.deletedIndexes.length > 0" class="space-y-2">
+          <h4 class="font-medium">Indexes:</h4>
+          <ul class="list-disc pl-5 space-y-1">
+            <li v-for="index in pendingChanges.deletedIndexes" :key="index" class="text-sm">
+              {{ index }}
+            </li>
+          </ul>
+        </div>
+
+        <!-- Foreign Keys to be deleted -->
+        <div v-if="pendingChanges.deletedForeignKeys.length > 0" class="space-y-2">
+          <h4 class="font-medium">Foreign Keys:</h4>
+          <ul class="list-disc pl-5 space-y-1">
+            <li v-for="fk in pendingChanges.deletedForeignKeys" :key="fk" class="text-sm">
+              {{ fk }}
+            </li>
+          </ul>
+        </div>
+
+        <p class="text-sm mt-4">
+          These changes can potentially affect data and may impact database performance or
+          functionality. Are you sure you want to proceed?
+        </p>
+      </div>
+    </template>
+  </ConfirmModal>
 </template>
