@@ -19,6 +19,7 @@ import {
   getAutoIncrementValue,
   currentDbEngine,
 } from './db'
+import { useToastNotification } from '@/composables/useToastNotification'
 
 // Props and emits definition
 const props = defineProps({
@@ -32,9 +33,19 @@ const props = defineProps({
   },
   slideoverTitle: {
     type: String,
-    default: 'Create New Table',
+    default: 'Edit Table',
+  },
+  columnData: {
+    type: Array,
+    default: () => [],
+  },
+  tableName: {
+    type: String,
+    default: '',
   },
 })
+
+const toast = useToastNotification()
 
 // Compute the full slideover title with database engine
 const fullSlideoverTitle = computed(() => {
@@ -59,7 +70,7 @@ const isSubmitting = computed({
 })
 
 // Form state
-const tableName = ref('')
+const tableName = ref(props.tableName || '')
 const tableNameError = ref<string | undefined>(undefined)
 const columns = ref<TableColumn[]>([])
 const indexes = ref<TableIndex[]>([])
@@ -70,6 +81,11 @@ const collapsibleState = ref<Record<number, boolean>>({})
 const indexCollapsibleState = ref<Record<number, boolean>>({})
 // Track collapsible state for foreign keys
 const foreignKeyCollapsibleState = ref<Record<number, boolean>>({})
+
+// Track deleted existing items
+const deletedColumns = ref<string[]>([])
+const deletedIndexes = ref<string[]>([])
+const deletedForeignKeys = ref<string[]>([])
 
 // Computed properties
 const isValid = computed(() => {
@@ -135,67 +151,148 @@ function validateColumnName(name: string): string | undefined {
 
 // Validate a table name based on database naming rules
 function validateTableName(name: string): string | undefined {
-  return validateDatabaseName(name, 'table')
+  if (!name.trim()) {
+    return `Table name is required`
+  }
+
+  if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(name)) {
+    return `Table name must start with letter or underscore and contain only letters, numbers, and underscores`
+  }
+
+  if (reservedKeywords.includes(name.toLowerCase())) {
+    return `Table name cannot be a reserved SQL keyword`
+  }
+
+  // Skip duplicate validation if it's the same as the original table name
+  if (props.tableName && name.toLowerCase() === props.tableName.toLowerCase()) {
+    return undefined
+  }
+
+  // For table names, check if it already exists in the database
+  const existingTables = dbTablesStore.tables as any[]
+  const isDuplicate = existingTables.some((table) => {
+    // Check if table is a string or an object with a name property
+    if (typeof table === 'string') {
+      return table.toLowerCase() === name.toLowerCase()
+    } else if (table && typeof table === 'object' && table.name) {
+      return table.name.toLowerCase() === name.toLowerCase()
+    }
+    return false
+  })
+
+  if (isDuplicate) {
+    return `Table '${name}' already exists in the database`
+  }
+
+  return undefined
 }
 
-// Add default columns function
-function addDefaultColumns() {
-  // Clear existing columns first
-  if (columns.value.length === 0) {
-    // Define default columns
-    const defaultColumns = [
-      {
-        name: 'id',
-        type: 'BIGINT',
-        options: {
-          length: '20',
-          nullable: false,
-          primary: true,
-          autoIncrement: true,
-        },
-        nameError: undefined,
-      },
-      {
-        name: 'uuid',
-        type: 'CHAR',
-        options: {
-          length: '12',
-          nullable: false,
-          primary: false,
-        },
-        nameError: undefined,
-      },
-      {
-        name: 'created_at',
-        type: 'TIMESTAMP',
-        options: {
-          length: null,
-          nullable: false,
-          primary: false,
-          default: 'CURRENT_TIMESTAMP',
-        },
-        nameError: undefined,
-      },
-      {
-        name: 'updated_at',
-        type: 'TIMESTAMP',
-        options: {
-          length: null,
-          nullable: true,
-          primary: false,
-        },
-        nameError: undefined,
-      },
-    ]
+// Function to parse and extract column data from the provided structure
+function processColumnData() {
+  // Don't process if no data is available
+  if (!props.columnData || props.columnData.length === 0) return
 
-    // Add the default columns
-    defaultColumns.forEach((column) => {
-      const index = columns.value.length
-      columns.value.push(column)
-      // Set collapsed state by default
-      collapsibleState.value[index] = false
+  // Clear existing data
+  columns.value = []
+  indexes.value = []
+  foreignKeys.value = []
+
+  // Process columns and extract indexes
+  const uniqueIndexes = new Map()
+
+  props.columnData.forEach((col: any, idx: number) => {
+    // Extract column type and length from format like "varchar(255)"
+    let type = col.type
+    let length: string | null = null
+    const typeMatch = col.type.match(/([a-zA-Z]+)\(([^)]+)\)/)
+
+    if (typeMatch) {
+      type = typeMatch[1].toUpperCase() // e.g., "VARCHAR"
+      length = typeMatch[2] // e.g., "255"
+    }
+
+    // Convert to internal column format
+    const column: TableColumn = {
+      name: col.name,
+      type: type.toUpperCase(),
+      options: {
+        length: length,
+        nullable: col.nullable,
+        primary: col.is_primary,
+        autoIncrement: col.extra?.includes('auto_increment'),
+        default: col.default,
+      },
+      nameError: undefined,
+      // Add disabled flag to mark this as an existing column that shouldn't be edited
+      disabled: true,
+      deleted: false, // Initialize deleted state as false
+    }
+
+    // Add the column
+    columns.value.push(column)
+
+    // Set default collapse state
+    collapsibleState.value[idx] = false
+
+    // Process indexes
+    if (col.indexes && col.indexes.length > 0) {
+      col.indexes.forEach((idx: any) => {
+        // Skip PRIMARY KEY indexes entirely since they're handled by the column's primary flag
+        if (idx.name === 'PRIMARY' || idx.type === 'PRIMARY KEY') return
+
+        // For non-primary indexes, use the name as the key to avoid duplicates
+        const indexKey = idx.name
+
+        if (!uniqueIndexes.has(indexKey)) {
+          let indexType = 'INDEX'
+
+          if (idx.type === 'UNIQUE') {
+            indexType = 'UNIQUE'
+          }
+
+          uniqueIndexes.set(indexKey, {
+            type: indexType,
+            column: col.name,
+            name: idx.name,
+          })
+        }
+      })
+    }
+
+    // Process foreign keys if present (in the relationships array)
+    if (col.relationships && col.relationships.length > 0) {
+      col.relationships.forEach((rel: any) => {
+        // console.log('Processing relationship:', rel)
+
+        const foreignKey = {
+          column: rel.column,
+          references: rel.references_column || 'id',
+          on: rel.references_table || '',
+          // Store additional properties for potential future use
+          constraint: rel.constraint,
+          on_update: rel.on_update,
+          on_delete: rel.on_delete,
+          disabled: true, // Mark existing foreign keys as disabled
+        }
+
+        foreignKeys.value.push(foreignKey)
+
+        // Fetch columns for this referenced table to populate the dropdown
+        if (rel.references_table) {
+          fetchTableColumns(rel.references_table)
+        }
+      })
+    }
+  })
+
+  // Convert indexes map to array and add to indexes value
+  uniqueIndexes.forEach((index) => {
+    indexes.value.push({
+      type: index.type === 'PRIMARY KEY' ? 'PRIMARY KEY' : index.type,
+      column: index.column,
+      disabled: true, // Mark existing indexes as disabled
     })
-  }
+  })
 }
 
 // Methods
@@ -219,13 +316,31 @@ function addColumn() {
 }
 
 function removeColumn(index: number) {
-  columns.value.splice(index, 1)
-  // Update collapsible state
-  const newState: Record<number, boolean> = {}
-  for (let i = 0; i < columns.value.length; i++) {
-    newState[i] = collapsibleState.value[i < index ? i : i + 1] || false
+  const column = columns.value[index]
+
+  // Instead of removing the column, mark it as deleted
+  if (column.disabled && column.name) {
+    // For existing columns, track deletion for API purposes
+    deletedColumns.value.push(column.name)
   }
-  collapsibleState.value = newState
+
+  // Mark as deleted instead of removing
+  columns.value[index].deleted = true
+}
+
+function restoreColumn(index: number) {
+  const column = columns.value[index]
+
+  // Remove from deleted columns tracking if it was an existing column
+  if (column.disabled && column.name) {
+    const idx = deletedColumns.value.indexOf(column.name)
+    if (idx !== -1) {
+      deletedColumns.value.splice(idx, 1)
+    }
+  }
+
+  // Mark as not deleted
+  columns.value[index].deleted = false
 }
 
 // Manage indexes
@@ -237,7 +352,30 @@ function addIndex() {
 }
 
 function removeIndex(index: number) {
-  indexes.value.splice(index, 1)
+  const idx = indexes.value[index]
+
+  // If this is an existing index, add it to the deleted indexes tracking array
+  if (idx.disabled && idx.column) {
+    deletedIndexes.value.push(idx.column)
+  }
+
+  // Mark as deleted instead of removing
+  indexes.value[index].deleted = true
+}
+
+function restoreIndex(index: number) {
+  const idx = indexes.value[index]
+
+  // Remove from deleted indexes tracking if it was an existing index
+  if (idx.disabled && idx.column) {
+    const deleteIdx = deletedIndexes.value.indexOf(idx.column)
+    if (deleteIdx !== -1) {
+      deletedIndexes.value.splice(deleteIdx, 1)
+    }
+  }
+
+  // Mark as not deleted
+  indexes.value[index].deleted = false
 }
 
 // Manage foreign keys
@@ -250,7 +388,30 @@ function addForeignKey() {
 }
 
 function removeForeignKey(index: number) {
-  foreignKeys.value.splice(index, 1)
+  const fk: any = foreignKeys.value[index]
+
+  // If this is an existing foreign key, add it to the deleted foreign keys tracking array
+  if (fk.disabled && fk.constraint) {
+    deletedForeignKeys.value.push(fk.constraint)
+  }
+
+  // Mark as deleted instead of removing
+  foreignKeys.value[index].deleted = true
+}
+
+function restoreForeignKey(index: number) {
+  const fk: any = foreignKeys.value[index]
+
+  // Remove from deleted foreign keys tracking if it was an existing foreign key
+  if (fk.disabled && fk.constraint) {
+    const idx = deletedForeignKeys.value.indexOf(fk.constraint)
+    if (idx !== -1) {
+      deletedForeignKeys.value.splice(idx, 1)
+    }
+  }
+
+  // Mark as not deleted
+  foreignKeys.value[index].deleted = false
 }
 
 function handleClose() {
@@ -270,7 +431,7 @@ function handleClose() {
   }, 100)
 }
 
-function handleSubmit() {
+async function handleSubmit() {
   if (!isValid.value) return
 
   // Validate table name one last time
@@ -292,40 +453,42 @@ function handleSubmit() {
   // Explicitly type the createTableRequest as CreateTableRequest
   const createTableRequest: CreateTableRequest = {
     table_name: tableName.value.trim(),
-    columns: columns.value.map((col: TableColumn) => {
-      // Format type with length if needed
-      let formattedType = col.type
-      if (needsLength(col.type) && col.options.length) {
-        formattedType = `${col.type}(${col.options.length})`
-      }
+    columns: columns.value
+      .filter((col) => !col.disabled && !col.deleted) // Exclude existing and deleted columns
+      .map((col: TableColumn) => {
+        // Format type with length if needed
+        let formattedType = col.type
+        if (needsLength(col.type) && col.options.length) {
+          formattedType = `${col.type}(${col.options.length})`
+        }
 
-      // Get the appropriate autoIncrement value if applicable
-      const autoIncrementValue =
-        col.options.autoIncrement && canAutoIncrement(col.type)
-          ? getAutoIncrementValue()
-          : undefined
+        // Get the appropriate autoIncrement value if applicable
+        const autoIncrementValue =
+          col.options.autoIncrement && canAutoIncrement(col.type)
+            ? getAutoIncrementValue()
+            : undefined
 
-      return {
-        name: col.name.trim(),
-        type: formattedType,
-        options: {
-          // Convert boolean nullable value to SQL constraint string
-          nullable: col.options.nullable ? 'NULL' : 'NOT NULL',
-          // Convert boolean primary key value to SQL constraint string
-          primary: col.options.primary ? 'PRIMARY KEY' : undefined,
-          // Convert boolean autoIncrement to SQL string value
-          autoIncrement: autoIncrementValue,
-          // Only include default if it has a value
-          default: col.options.default || undefined,
-        },
-      }
-    }),
+        return {
+          name: col.name.trim(),
+          type: formattedType,
+          options: {
+            // Convert boolean nullable value to SQL constraint string
+            nullable: col.options.nullable ? 'NULL' : 'NOT NULL',
+            // Convert boolean primary key value to SQL constraint string
+            primary: col.options.primary ? 'PRIMARY KEY' : undefined,
+            // Convert boolean autoIncrement to SQL string value
+            autoIncrement: autoIncrementValue,
+            // Only include default if it has a value
+            default: col.options.default || undefined,
+          },
+        }
+      }),
   }
 
   // Add indexes if any exist
   if (indexes.value.length > 0) {
-    // Filter out any indexes that don't have column names
-    const validIndexes = indexes.value.filter((index) => index.column)
+    // Filter out any indexes that don't have column names and exclude existing ones
+    const validIndexes = indexes.value.filter((index) => index.column && !index.disabled)
 
     if (validIndexes.length > 0) {
       createTableRequest.indexes = validIndexes.map((index) => ({
@@ -337,8 +500,10 @@ function handleSubmit() {
 
   // Add foreign keys if any exist
   if (foreignKeys.value.length > 0) {
-    // Filter out any foreign keys that don't have complete information
-    const validForeignKeys = foreignKeys.value.filter((fk) => fk.column && fk.references && fk.on)
+    // Filter out any foreign keys that don't have complete information and exclude existing ones
+    const validForeignKeys = foreignKeys.value.filter(
+      (fk) => fk.column && fk.references && fk.on && !fk.disabled,
+    )
 
     if (validForeignKeys.length > 0) {
       createTableRequest.foreign_keys = validForeignKeys.map((fk) => ({
@@ -349,8 +514,38 @@ function handleSubmit() {
     }
   }
 
+  // Add deleted items to the request
+  if (deletedColumns.value.length > 0) {
+    createTableRequest.deleted_columns = deletedColumns.value
+  }
+
+  if (deletedIndexes.value.length > 0) {
+    createTableRequest.deleted_indexes = deletedIndexes.value
+  }
+
+  if (deletedForeignKeys.value.length > 0) {
+    createTableRequest.deleted_foreign_keys = deletedForeignKeys.value
+  }
+
+  console.log('Update Table Request:', createTableRequest)
   // Emit submit event with table data
-  emit('submit', createTableRequest)
+
+  try {
+    const response = await dbTablesStore.updateTableSchema(createTableRequest)
+    if (response.success) {
+      // Show success notification
+    } else {
+      throw new Error('Failed to update table schema')
+    }
+    emit('submit', response)
+  } catch (error: any) {
+    toast.error({
+      title: 'Update Failed',
+      description: error.message || 'Failed to update table. Please try again.',
+    })
+    console.error('Error updating table schema:', error)
+    // Handle error appropriately, e.g., show a notification
+  }
   isSubmitting.value = false
   handleClose()
 }
@@ -392,8 +587,13 @@ watch(tableName, (newName) => {
 // Watch for slideover opening to add default columns
 watch(isOpen, (isOpen) => {
   if (isOpen) {
-    // Add default columns when the slideover opens
-    addDefaultColumns()
+    // Set the table name from props
+    tableName.value = props.tableName || ''
+
+    if (props.columnData && props.columnData.length > 0) {
+      // Process the incoming column data to populate the form when editing
+      processColumnData()
+    }
   }
 })
 
@@ -481,7 +681,7 @@ const referencedTableColumns = ref<ReferencedTableColumns>({})
 async function fetchTableColumns(tableName: string) {
   if (!tableName || tableName.trim() === '') return
 
-  console.debug('Fetching columns for table:', tableName)
+  // console.debug('Fetching columns for table:', tableName)
 
   // Initialize or reset the state for this table
   if (!referencedTableColumns.value[tableName]) {
@@ -497,11 +697,11 @@ async function fetchTableColumns(tableName: string) {
 
   try {
     const response = await dbTablesStore.fetchTableColumns(tableName)
-    console.debug('API Response for columns:', response)
+    // console.debug('API Response for columns:', response)
 
     // Get the columns from the response
     const columnsData = response ? response.columns || response : []
-    console.log('Column data:', columnsData)
+    // console.log('Column data:', columnsData)
 
     // Transform columns to the format expected by USelect
     if (Array.isArray(columnsData)) {
@@ -520,7 +720,7 @@ async function fetchTableColumns(tableName: string) {
       throw new Error('Invalid column data format')
     }
 
-    console.log('Processed columns for UI:', referencedTableColumns.value[tableName].columns)
+    // console.log('Processed columns for UI:', referencedTableColumns.value[tableName].columns)
   } catch (error: any) {
     console.error('Error fetching columns:', error)
     referencedTableColumns.value[tableName] = {
@@ -559,7 +759,7 @@ function onReferenceTableChange(tableName: any, fkIndex: number) {
             <UInput
               v-model="tableName"
               placeholder="Enter table name"
-              :disabled="isSubmitting"
+              :disabled="true"
               autofocus
               class="w-full"
               :status="tableNameError ? 'error' : undefined"
@@ -595,7 +795,12 @@ function onReferenceTableChange(tableName: any, fkIndex: number) {
                   </div>
 
                   <div v-else class="space-y-3" ref="columnsContainer">
-                    <div v-for="(column, index) in columns" :key="index" class="border rounded-md">
+                    <div
+                      v-for="(column, index) in columns"
+                      :key="index"
+                      class="border rounded-md"
+                      :class="{ 'border-gray-300': column.deleted }"
+                    >
                       <UCollapsible v-model:open="collapsibleState[index]" class="w-full">
                         <div class="flex items-center w-full">
                           <div
@@ -608,6 +813,7 @@ function onReferenceTableChange(tableName: any, fkIndex: number) {
                           </div>
                           <UButton
                             class="group flex-1 flex items-center justify-between p-3 text-left"
+                            :class="{ 'opacity-60': column.deleted }"
                             color="neutral"
                             variant="ghost"
                             :trailing-icon="'i-lucide-settings-2'"
@@ -619,6 +825,12 @@ function onReferenceTableChange(tableName: any, fkIndex: number) {
                             <div class="flex flex-1 items-center justify-between">
                               <div class="font-medium truncate max-w-[180px]">
                                 {{ column.name || 'New Column' }}
+                                <span v-if="column.disabled" class="ml-1 text-xs text-amber-600"
+                                  >(existing)</span
+                                >
+                                <span v-if="column.deleted" class="ml-1 text-xs text-red-600"
+                                  >(deleted)</span
+                                >
                               </div>
                               <div class="text-xs text-gray-500 mr-2">
                                 {{ column.type
@@ -628,13 +840,25 @@ function onReferenceTableChange(tableName: any, fkIndex: number) {
                               </div>
                             </div>
                           </UButton>
+                          <!-- Show delete or restore button based on column status -->
                           <UButton
+                            v-if="!column.deleted"
                             color="error"
                             variant="ghost"
                             icon="i-lucide-trash-2"
                             size="sm"
                             class="mr-2"
-                            @click="removeColumn(index)"
+                            @click.stop="removeColumn(index)"
+                            :disabled="isSubmitting"
+                          />
+                          <UButton
+                            v-else
+                            color="success"
+                            variant="ghost"
+                            icon="i-tabler-restore"
+                            size="sm"
+                            class="mr-2"
+                            @click.stop="restoreColumn(index)"
                             :disabled="isSubmitting"
                           />
                         </div>
@@ -650,9 +874,13 @@ function onReferenceTableChange(tableName: any, fkIndex: number) {
                                 <UInput
                                   v-model="column.name"
                                   placeholder="Column name"
-                                  :disabled="isSubmitting"
+                                  :disabled="isSubmitting || column.disabled || column.deleted"
                                   class="w-full"
                                   :status="column.nameError ? 'error' : undefined"
+                                  :class="{
+                                    'bg-gray-100 dark:bg-gray-800':
+                                      column.disabled || column.deleted,
+                                  }"
                                 />
                               </UFormField>
                               <div class="grid grid-cols-2 gap-4 mb-4">
@@ -660,9 +888,13 @@ function onReferenceTableChange(tableName: any, fkIndex: number) {
                                   <USelect
                                     v-model="column.type"
                                     :items="columnTypes"
-                                    :disabled="isSubmitting"
+                                    :disabled="isSubmitting || column.disabled || column.deleted"
                                     placeholder="Select type"
                                     class="w-full"
+                                    :class="{
+                                      'bg-gray-100 dark:bg-gray-800':
+                                        column.disabled || column.deleted,
+                                    }"
                                   />
                                 </UFormField>
                                 <UFormField label="Length">
@@ -671,8 +903,17 @@ function onReferenceTableChange(tableName: any, fkIndex: number) {
                                     placeholder="255"
                                     type="number"
                                     min="1"
-                                    :disabled="isSubmitting || !needsLength(column.type)"
+                                    :disabled="
+                                      isSubmitting ||
+                                      !needsLength(column.type) ||
+                                      column.disabled ||
+                                      column.deleted
+                                    "
                                     class="w-full"
+                                    :class="{
+                                      'bg-gray-100 dark:bg-gray-800':
+                                        column.disabled || column.deleted,
+                                    }"
                                   />
                                 </UFormField>
                               </div>
@@ -680,13 +921,16 @@ function onReferenceTableChange(tableName: any, fkIndex: number) {
                                 <UCheckbox
                                   v-model="column.options.nullable"
                                   label="Nullable"
-                                  :disabled="isSubmitting"
+                                  :disabled="isSubmitting || column.disabled || column.deleted"
                                 />
                                 <UCheckbox
                                   v-model="column.options.primary"
                                   label="Primary"
                                   :disabled="
-                                    isSubmitting || (hasPrimaryKey && !column.options.primary)
+                                    isSubmitting ||
+                                    (hasPrimaryKey && !column.options.primary) ||
+                                    column.disabled ||
+                                    column.deleted
                                   "
                                 />
                                 <UCheckbox
@@ -695,7 +939,9 @@ function onReferenceTableChange(tableName: any, fkIndex: number) {
                                   :disabled="
                                     isSubmitting ||
                                     !column.options.primary ||
-                                    !canAutoIncrement(column.type)
+                                    !canAutoIncrement(column.type) ||
+                                    column.disabled ||
+                                    column.deleted
                                   "
                                 />
                               </div>
@@ -704,8 +950,11 @@ function onReferenceTableChange(tableName: any, fkIndex: number) {
                               <UInput
                                 v-model="column.options.default"
                                 placeholder="Default value"
-                                :disabled="isSubmitting"
+                                :disabled="isSubmitting || column.disabled || column.deleted"
                                 class="w-full"
+                                :class="{
+                                  'bg-gray-100 dark:bg-gray-800': column.disabled || column.deleted,
+                                }"
                               />
                             </UFormField>
                           </div>
@@ -740,11 +989,17 @@ function onReferenceTableChange(tableName: any, fkIndex: number) {
                     No indexes added yet. Click "Add Index" to add one.
                   </div>
                   <div v-else class="space-y-3">
-                    <div v-for="(index, i) in indexes" :key="i" class="border rounded-md">
+                    <div
+                      v-for="(index, i) in indexes"
+                      :key="i"
+                      class="border rounded-md"
+                      :class="{ 'border-gray-300': index.deleted }"
+                    >
                       <UCollapsible v-model:open="indexCollapsibleState[i]" class="w-full">
                         <div class="flex items-center w-full">
                           <UButton
-                            class="group flex-1 flex items-center justify-between p-3 text-left w-full"
+                            class="group flex-1 flex items-center justify-between p-3 text-left"
+                            :class="{ 'opacity-60': index.deleted }"
                             color="neutral"
                             variant="ghost"
                             :trailing-icon="'i-lucide-settings-2'"
@@ -754,21 +1009,35 @@ function onReferenceTableChange(tableName: any, fkIndex: number) {
                             }"
                           >
                             <div class="flex flex-1 items-center justify-between">
-                              <!-- <div class="font-medium truncate max-w-[180px]">
-                                Index {{ i + 1 }}
-                              </div> -->
                               <div class="text-xs text-gray-500 mr-2">
                                 {{ index.type }} on {{ index.column }}
+                                <span v-if="index.disabled" class="ml-1 text-xs text-amber-600"
+                                  >(existing)</span
+                                >
+                                <span v-if="index.deleted" class="ml-1 text-xs text-red-600"
+                                  >(deleted)</span
+                                >
                               </div>
                             </div>
                           </UButton>
                           <UButton
+                            v-if="!index.deleted"
                             color="error"
                             variant="ghost"
                             icon="i-lucide-trash-2"
                             size="sm"
                             class="mr-2"
-                            @click="removeIndex(i)"
+                            @click.stop="removeIndex(i)"
+                            :disabled="isSubmitting"
+                          />
+                          <UButton
+                            v-else
+                            color="success"
+                            variant="ghost"
+                            icon="i-tabler-restore"
+                            size="sm"
+                            class="mr-2"
+                            @click.stop="restoreIndex(i)"
                             :disabled="isSubmitting"
                           />
                         </div>
@@ -783,8 +1052,9 @@ function onReferenceTableChange(tableName: any, fkIndex: number) {
                                       { label: 'Regular Index', value: 'INDEX' },
                                       { label: 'Unique Index', value: 'UNIQUE' },
                                     ]"
-                                    :disabled="isSubmitting"
+                                    :disabled="isSubmitting || index.disabled"
                                     class="w-full"
+                                    :class="{ 'bg-gray-100 dark:bg-gray-800': index.disabled }"
                                   />
                                 </UFormField>
                                 <UFormField label="Column">
@@ -796,8 +1066,11 @@ function onReferenceTableChange(tableName: any, fkIndex: number) {
                                         value: col.name,
                                       }))
                                     "
-                                    :disabled="isSubmitting || columns.length === 0"
+                                    :disabled="
+                                      isSubmitting || columns.length === 0 || index.disabled
+                                    "
                                     class="w-full"
+                                    :class="{ 'bg-gray-100 dark:bg-gray-800': index.disabled }"
                                   />
                                 </UFormField>
                               </div>
@@ -834,11 +1107,17 @@ function onReferenceTableChange(tableName: any, fkIndex: number) {
                     No foreign keys added yet. Click "Add Foreign Key" to add one.
                   </div>
                   <div v-else class="space-y-3">
-                    <div v-for="(fk, i) in foreignKeys" :key="i" class="border rounded-md">
+                    <div
+                      v-for="(fk, i) in foreignKeys"
+                      :key="i"
+                      class="border rounded-md"
+                      :class="{ 'border-gray-300': fk.deleted }"
+                    >
                       <UCollapsible v-model:open="foreignKeyCollapsibleState[i]" class="w-full">
                         <div class="flex items-center w-full">
                           <UButton
                             class="group flex-1 flex items-center justify-between p-3 text-left"
+                            :class="{ 'opacity-60': fk.deleted }"
                             color="neutral"
                             variant="ghost"
                             :trailing-icon="'i-lucide-settings-2'"
@@ -853,16 +1132,33 @@ function onReferenceTableChange(tableName: any, fkIndex: number) {
                               </div> -->
                               <div class="text-xs text-gray-500 mr-2">
                                 {{ fk.column }} → {{ fk.on }}.{{ fk.references }}
+                                <span v-if="fk.disabled" class="ml-1 text-xs text-amber-600"
+                                  >(existing)</span
+                                >
+                                <span v-if="fk.deleted" class="ml-1 text-xs text-red-600"
+                                  >(deleted)</span
+                                >
                               </div>
                             </div>
                           </UButton>
                           <UButton
+                            v-if="!fk.deleted"
                             color="error"
                             variant="ghost"
                             icon="i-lucide-trash-2"
                             size="sm"
                             class="mr-2"
-                            @click="removeForeignKey(i)"
+                            @click.stop="removeForeignKey(i)"
+                            :disabled="isSubmitting"
+                          />
+                          <UButton
+                            v-else
+                            color="success"
+                            variant="ghost"
+                            icon="i-tabler-restore"
+                            size="sm"
+                            class="mr-2"
+                            @click.stop="restoreForeignKey(i)"
                             :disabled="isSubmitting"
                           />
                         </div>
@@ -878,8 +1174,9 @@ function onReferenceTableChange(tableName: any, fkIndex: number) {
                                       value: col.name,
                                     }))
                                   "
-                                  :disabled="isSubmitting || columns.length === 0"
+                                  :disabled="isSubmitting || columns.length === 0 || fk.disabled"
                                   class="w-full"
+                                  :class="{ 'bg-gray-100 dark:bg-gray-800': fk.disabled }"
                                 />
                               </UFormField>
                               <UFormField label="References Table">
@@ -887,8 +1184,11 @@ function onReferenceTableChange(tableName: any, fkIndex: number) {
                                   v-model="fk.on"
                                   :items="tableOptions"
                                   placeholder="Select referenced table"
-                                  :disabled="isSubmitting || tableOptions.length === 0"
+                                  :disabled="
+                                    isSubmitting || tableOptions.length === 0 || fk.disabled
+                                  "
                                   class="w-full"
+                                  :class="{ 'bg-gray-100 dark:bg-gray-800': fk.disabled }"
                                   @update:model-value="onReferenceTableChange($event, i)"
                                 />
                               </UFormField>
@@ -897,10 +1197,11 @@ function onReferenceTableChange(tableName: any, fkIndex: number) {
                                   v-model="fk.references"
                                   :items="referencedTableColumns[fk.on]?.columns || []"
                                   :loading="referencedTableColumns[fk.on]?.isLoading"
-                                  :disabled="isSubmitting || !fk.on"
+                                  :disabled="isSubmitting || !fk.on || fk.disabled"
                                   :placeholder="!fk.on ? 'Select table first' : 'Select column'"
                                   loading-icon="i-lucide-loader-2"
                                   class="w-full"
+                                  :class="{ 'bg-gray-100 dark:bg-gray-800': fk.disabled }"
                                 >
                                 </USelect>
                               </UFormField>
@@ -934,7 +1235,7 @@ function onReferenceTableChange(tableName: any, fkIndex: number) {
           :loading="isSubmitting"
           :disabled="!isValid || isSubmitting"
           @click="handleSubmit"
-          label="Create Table"
+          label="Save Changes"
         />
       </div>
     </template>

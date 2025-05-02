@@ -110,6 +110,253 @@ const db = {
     return executeApiCall<TableData>(useApi(`/admin/db/table/create`).post(data).json())
   },
 
+  /**
+   * Drop a database table
+   */
+  dropTable: async (tableName: string): Promise<APIResponse<null>> => {
+    return executeApiCall<null>(
+      useApi(`/admin/db/table/drop`).post({ table_name: tableName }).json(),
+    )
+  },
+
+  /**
+   * Get table size information
+   */
+  getTableSize: async (tableName: string): Promise<APIResponse<{ size: number; rows: number }>> => {
+    return executeApiCall<{ size: number; rows: number }>(
+      useApi(`/admin/db/table/${tableName}/size`).get().json(),
+    )
+  },
+
+  /**
+   * Add a column to an existing table
+   */
+  addColumn: async (
+    tableName: string,
+    column: { name: string; type: string; options?: Record<string, any> },
+  ): Promise<APIResponse<{ table: string; column: any }>> => {
+    return executeApiCall<{ table: string; column: any }>(
+      useApi(`/admin/db/table/column/add`)
+        .post({
+          table_name: tableName,
+          column,
+        })
+        .json(),
+    )
+  },
+
+  /**
+   * Add multiple columns to an existing table in a batch operation
+   */
+  addColumns: async (
+    tableName: string,
+    columns: Array<{ name: string; type: string; options?: Record<string, any> }>,
+  ): Promise<APIResponse<{ table: string; columns_added: string[] }>> => {
+    return executeApiCall<{ table: string; columns_added: string[] }>(
+      useApi(`/admin/db/table/column/add-batch`)
+        .post({
+          table_name: tableName,
+          columns,
+        })
+        .json(),
+    )
+  },
+
+  /**
+   * Drop a column from a table
+   */
+  dropColumn: async (tableName: string, columnName: string): Promise<APIResponse<null>> => {
+    return executeApiCall<null>(
+      useApi(`/admin/db/table/column/drop`)
+        .post({
+          table_name: tableName,
+          column_name: columnName,
+        })
+        .json(),
+    )
+  },
+
+  /**
+   * Drop multiple columns from a table in a batch operation
+   */
+  dropColumns: async (
+    tableName: string,
+    columnNames: string[],
+  ): Promise<APIResponse<{ table: string; columns_dropped: string[] }>> => {
+    return executeApiCall<{ table: string; columns_dropped: string[] }>(
+      useApi(`/admin/db/table/column/drop-batch`)
+        .post({
+          table_name: tableName,
+          column_names: columnNames,
+        })
+        .json(),
+    )
+  },
+
+  /**
+   * Add an index to a table
+   */
+  addIndex: async (
+    tableName: string,
+    index: { column: string; type: 'INDEX' | 'UNIQUE'; name?: string },
+  ): Promise<APIResponse<{ table: string; indexes_added: string[] }>> => {
+    return executeApiCall<{ table: string; indexes_added: string[] }>(
+      useApi(`/admin/db/table/index/add`)
+        .post({
+          table_name: tableName,
+          index,
+        })
+        .json(),
+    )
+  },
+
+  /**
+   * Add multiple indexes to a table in a batch operation
+   */
+  addIndexes: async (
+    tableName: string,
+    indexes: Array<{ column: string; type: 'INDEX' | 'UNIQUE'; name?: string }>,
+  ): Promise<APIResponse<{ table: string; indexes_added: string[] }>> => {
+    return executeApiCall<{ table: string; indexes_added: string[] }>(
+      useApi(`/admin/db/table/index/add-batch`)
+        .post({
+          table_name: tableName,
+          indexes,
+        })
+        .json(),
+    )
+  },
+
+  /**
+   * Drop an index from a table
+   */
+  dropIndex: async (
+    tableName: string,
+    indexName: string,
+  ): Promise<APIResponse<{ table: string; indexes_dropped: string[] }>> => {
+    return executeApiCall<{ table: string; indexes_dropped: string[] }>(
+      useApi(`/admin/db/table/index/drop`)
+        .post({
+          table_name: tableName,
+          index_name: indexName,
+        })
+        .json(),
+    )
+  },
+
+  /**
+   * Drop multiple indexes from a table in a batch operation
+   */
+  dropIndexes: async (
+    tableName: string,
+    indexNames: string[],
+  ): Promise<APIResponse<{ table: string; indexes_dropped: string[] }>> => {
+    return executeApiCall<{ table: string; indexes_dropped: string[] }>(
+      useApi(`/admin/db/table/index/drop-batch`)
+        .post({
+          table_name: tableName,
+          index_names: indexNames,
+        })
+        .json(),
+    )
+  },
+
+  /**
+   * Add a foreign key constraint to a table
+   */
+  addForeignKey: async (
+    tableName: string,
+    foreignKey: {
+      column: string
+      references: string
+      on: string
+      name?: string
+      on_delete?: string
+      on_update?: string
+    },
+  ): Promise<APIResponse<{ table: string; constraints_added: string[] }>> => {
+    return executeApiCall<{ table: string; constraints_added: string[] }>(
+      useApi(`/admin/db/table/foreign-key/add`)
+        .post({
+          table_name: tableName,
+          foreign_key: foreignKey,
+        })
+        .json(),
+    )
+  },
+
+  /**
+   * Update a table's schema
+   */
+  updateSchema: async (data: any): Promise<APIResponse<any>> => {
+    return executeApiCall<any>(useApi(`/admin/db/table/schema/update`).post(data).json())
+  },
+
+  /**
+   * Add multiple foreign key constraints to a table in a batch operation
+   */
+  addForeignKeys: async (
+    tableName: string,
+    foreignKeys: Array<{
+      column: string
+      references: string
+      on: string
+      name?: string
+      on_delete?: string
+      on_update?: string
+    }>,
+  ): Promise<APIResponse<{ table: string; constraints_added: string[] }>> => {
+    return executeApiCall<{ table: string; constraints_added: string[] }>(
+      useApi(`/admin/db/table/foreign-key/add-batch`)
+        .post({
+          table_name: tableName,
+          foreign_keys: foreignKeys,
+        })
+        .json(),
+    )
+  },
+
+  /**
+   * Drop a foreign key constraint from a table
+   */
+  dropForeignKey: async (
+    tableName: string,
+    constraintName: string,
+  ): Promise<APIResponse<{ table: string; constraints_dropped: string[] }>> => {
+    return executeApiCall<{ table: string; constraints_dropped: string[] }>(
+      useApi(`/admin/db/table/foreign-key/drop`)
+        .post({
+          table_name: tableName,
+          constraint_name: constraintName,
+        })
+        .json(),
+    )
+  },
+
+  /**
+   * Drop multiple foreign key constraints from a table in a batch operation
+   */
+  dropForeignKeys: async (
+    tableName: string,
+    constraintNames: string[],
+  ): Promise<APIResponse<{ table: string; constraints_dropped: string[] }>> => {
+    return executeApiCall<{ table: string; constraints_dropped: string[] }>(
+      useApi(`/admin/db/table/foreign-key/drop-batch`)
+        .post({
+          table_name: tableName,
+          constraint_names: constraintNames,
+        })
+        .json(),
+    )
+  },
+
+  createTableData: async (
+    table: string,
+    data: Record<string, any>,
+  ): Promise<APIResponse<TableData>> => {
+    return executeApiCall<TableData>(useApi(`/admin/db/tables/${table}/data`).post(data).json())
+  },
+
   updateTableData: async (
     table: string,
     id: string,
