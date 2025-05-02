@@ -288,6 +288,30 @@ export const useDBTablesStore = defineStore('dbTables', {
       }
     },
 
+    async deleteTable(tableName: string) {
+      this.isLoading = true
+      this.dbError = null
+
+      try {
+        const response: any = await api.db.dropTable(tableName)
+        if (!response || response.success === false) {
+          const errorMsg = response?.message || `Failed to delete table: ${tableName}`
+          const errorCode = response?.code || 500
+          throw { message: errorMsg, code: errorCode, data: response?.data || [] }
+        }
+
+        // Refresh the tables list to exclude the deleted table
+        await this.fetchTables()
+
+        return response
+      } catch (error: any) {
+        this.dbError = error.message || `An error occurred while deleting table: ${tableName}`
+        throw error
+      } finally {
+        this.isLoading = false
+      }
+    },
+
     clearTableData() {
       this.tableData = []
       this.currentRecord = null

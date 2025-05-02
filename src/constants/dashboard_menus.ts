@@ -15,9 +15,9 @@ export const dashboardMenus = [
     to: '/migrations',
   },
   {
-    label: 'Commands',
+    label: 'sql Editor',
     icon: 'i-lucide-square-terminal',
-    to: '/commands',
+    to: '/sql',
   },
   {
     label: 'Extensions',

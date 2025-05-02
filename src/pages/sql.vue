@@ -34,6 +34,7 @@ const sqlQuery = ref('SELECT * FROM users LIMIT 10;')
 const selectedDatabase = ref('')
 const showSaveDialog = ref(false)
 const isQueryHistory = ref(false)
+const allowWrite = ref(false) // Add this line for the allow_write flag
 
 // Computed properties from store state
 const isExecuting = computed(() => sqlQueriesStore.isLoading)
@@ -95,7 +96,7 @@ async function executeQuery() {
   const query: SQLQuery = {
     query: sqlQuery.value,
     params: [],
-    // allow_write: false, // Uncomment if you want to allow write operations
+    allow_write: allowWrite.value, // Use the checkbox value to control write permissions
   }
 
   try {
@@ -282,11 +283,12 @@ async function confirmDeleteAllQueries() {
             <div class="flex items-center justify-between">
               <h3 class="text-lg font-semibold">SQL Editor</h3>
               <div class="flex items-center gap-2">
-                <USelect
-                  v-model="selectedDatabase"
-                  :options="databases"
-                  placeholder="Select database"
-                  class="w-48"
+                <USwitch
+                  v-model="allowWrite"
+                  label="Allow Write"
+                  size="md"
+                  color="success"
+                  class="mr-5"
                 />
                 <UButton
                   color="primary"

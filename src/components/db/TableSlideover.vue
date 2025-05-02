@@ -19,6 +19,7 @@ import {
   getAutoIncrementValue,
   currentDbEngine,
 } from './db'
+import ConfirmModal from '@/components/ConfirmModal.vue'
 
 // Props and emits definition
 const props = defineProps({
@@ -35,6 +36,11 @@ const props = defineProps({
     default: 'Create New Table',
   },
 })
+
+// State for the confirmation modal and change tracking
+const showConfirmModal = ref(false)
+const hasChanges = ref(false)
+const initialColumnCount = ref(0)
 
 // Compute the full slideover title with database engine
 const fullSlideoverTitle = computed(() => {
@@ -254,7 +260,16 @@ function removeForeignKey(index: number) {
 }
 
 function handleClose() {
+  if (hasChanges.value) {
+    showConfirmModal.value = true
+  } else {
+    closeSlideoverImmediately()
+  }
+}
+
+function closeSlideoverImmediately() {
   isOpen.value = false
+  showConfirmModal.value = false
   emit('close')
 
   // Reset form
@@ -267,6 +282,7 @@ function handleClose() {
     collapsibleState.value = {}
     indexCollapsibleState.value = {}
     foreignKeyCollapsibleState.value = {}
+    hasChanges.value = false
   }, 100)
 }
 
@@ -394,8 +410,36 @@ watch(isOpen, (isOpen) => {
   if (isOpen) {
     // Add default columns when the slideover opens
     addDefaultColumns()
+
+    // Reset change tracking
+    hasChanges.value = false
+    // Store the initial column count to track additions
+    initialColumnCount.value = columns.value.length
   }
 })
+
+// Track changes for determining if the form has unsaved changes
+watch(
+  [columns, indexes, foreignKeys, tableName],
+  () => {
+    // Consider changes if:
+    // 1. We've added columns beyond the default ones
+    const hasNewColumns = columns.value.length > initialColumnCount.value
+
+    // 2. We've added indexes
+    const hasNewIndexes = indexes.value.length > 0
+
+    // 3. We've added foreign keys
+    const hasNewForeignKeys = foreignKeys.value.length > 0
+
+    // 4. Table name has been set (not empty)
+    const hasTableName = tableName.value.trim() !== ''
+
+    // Update the change tracking flag
+    hasChanges.value = hasNewColumns || hasNewIndexes || hasNewForeignKeys || hasTableName
+  },
+  { deep: true },
+)
 
 watch(isSubmitting, (newSubmitting) => {
   emit('update:submitting', newSubmitting)
@@ -547,9 +591,12 @@ function onReferenceTableChange(tableName: any, fkIndex: number) {
   <USlideover
     v-model:open="isOpen"
     :title="fullSlideoverTitle"
-    :close="{ onClick: () => handleClose() }"
+    :close="false"
     side="right"
     class="w-full max-w-lg"
+    :ui="{
+      footer: 'justify-end',
+    }"
   >
     <template #body>
       <div class="space-y-4">
@@ -939,4 +986,13 @@ function onReferenceTableChange(tableName: any, fkIndex: number) {
       </div>
     </template>
   </USlideover>
+  <ConfirmModal
+    v-model:open="showConfirmModal"
+    ModalTitle="Unsaved Changes"
+    ModalContent="You have unsaved changes to the table structure. Closing without saving will discard these changes."
+    ModalConfirmText="Discard Changes"
+    ModalCancelText="Continue Editing"
+    @confirm="closeSlideoverImmediately"
+    @close="showConfirmModal = false"
+  />
 </template>
