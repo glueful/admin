@@ -292,7 +292,6 @@ function onShowEdit(row: any) {
 }
 
 function onShowEditColumns() {
-  console.log('Selected columns for edit:', props.columns)
   showEditTableSlideover.value = true
 }
 
@@ -311,6 +310,10 @@ watch(
     showDelete.value = Object.keys(newRowSelection).length > 0
   },
 )
+
+const handleUpdateSchema = async (schema: any) => {
+  emit('refresh-data', schema)
+}
 </script>
 <template>
   <div class="flex flex-col h-full">
@@ -423,5 +426,6 @@ watch(
     slideoverTitle="Edit Table"
     :columnData="props.columns"
     :tableName="props.tableName"
+    @submit="handleUpdateSchema"
   />
 </template>

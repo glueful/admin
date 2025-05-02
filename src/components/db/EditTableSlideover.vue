@@ -19,6 +19,7 @@ import {
   getAutoIncrementValue,
   currentDbEngine,
 } from './db'
+import { useToastNotification } from '@/composables/useToastNotification'
 
 // Props and emits definition
 const props = defineProps({
@@ -43,6 +44,8 @@ const props = defineProps({
     default: '',
   },
 })
+
+const toast = useToastNotification()
 
 // Compute the full slideover title with database engine
 const fullSlideoverTitle = computed(() => {
@@ -428,7 +431,7 @@ function handleClose() {
   }, 100)
 }
 
-function handleSubmit() {
+async function handleSubmit() {
   if (!isValid.value) return
 
   // Validate table name one last time
@@ -524,14 +527,27 @@ function handleSubmit() {
     createTableRequest.deleted_foreign_keys = deletedForeignKeys.value
   }
 
+  console.log('Update Table Request:', createTableRequest)
   // Emit submit event with table data
-  emit('submit', createTableRequest)
 
-  // In a real implementation, you might want to wait for API response before closing
-  setTimeout(() => {
-    isSubmitting.value = false
-    handleClose()
-  }, 500)
+  try {
+    const response = await dbTablesStore.updateTableSchema(createTableRequest)
+    if (response.success) {
+      // Show success notification
+    } else {
+      throw new Error('Failed to update table schema')
+    }
+    emit('submit', response)
+  } catch (error: any) {
+    toast.error({
+      title: 'Update Failed',
+      description: error.message || 'Failed to update table. Please try again.',
+    })
+    console.error('Error updating table schema:', error)
+    // Handle error appropriately, e.g., show a notification
+  }
+  isSubmitting.value = false
+  handleClose()
 }
 
 // Watch for changes in column names to validate them

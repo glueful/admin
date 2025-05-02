@@ -286,6 +286,13 @@ const db = {
   },
 
   /**
+   * Update a table's schema
+   */
+  updateSchema: async (data: any): Promise<APIResponse<any>> => {
+    return executeApiCall<any>(useApi(`/admin/db/table/schema/update`).post(data).json())
+  },
+
+  /**
    * Add multiple foreign key constraints to a table in a batch operation
    */
   addForeignKeys: async (

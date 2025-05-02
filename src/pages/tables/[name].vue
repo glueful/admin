@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import { useToastNotification } from '@/composables/useToastNotification'
 import { useDBTablesStore } from '@/stores/dbTables'
 import { ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
@@ -7,21 +8,45 @@ const route: any = useRoute()
 const tableStore = useDBTablesStore()
 const tableName = ref(route.params.name as string)
 const isLoading = ref(false)
+const toast = useToastNotification()
+
+// Fetch table data when the component is mounted
+const fetchTableData = async () => {
+  isLoading.value = true
+  tableStore.tableData = []
+  tableStore.tableColumns = []
+  await tableStore.fetchTableData(tableName.value)
+  isLoading.value = false
+}
 
 watch(
   () => route.params.name,
   async (newName) => {
     tableName.value = newName as string
     if (tableName.value) {
-      isLoading.value = true
-      tableStore.tableData = []
-      tableStore.tableColumns = []
-      await tableStore.fetchTableData(tableName.value)
-      isLoading.value = false
+      await fetchTableData()
     }
   },
   { immediate: true },
 )
+
+// Handle refresh data event from the table component
+const handleRefresh = async (schema: any) => {
+  console.log('Refresh data:', schema)
+  if (schema.data.failed_operations.length) {
+    toast.error({
+      title: schema.message,
+      description: schema.data.failed_operations.map((operation: any) => operation).join(', '),
+    })
+  }
+  if (schema.success) {
+    toast.success({
+      title: 'Schema updated successfully',
+      description: schema.message,
+    })
+  }
+  await fetchTableData()
+}
 </script>
 
 <template>
@@ -40,6 +65,7 @@ watch(
         :total-items="tableStore.pagination.total"
         v-if="tableStore.tableData.length > 0 || tableStore.tableColumns.length > 0"
         :table-name="tableName"
+        @refresh-data="handleRefresh"
       >
         <template #empty>
           <div class="flex flex-col items-center justify-center py-12 text-center">

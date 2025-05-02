@@ -256,6 +256,38 @@ export const useDBTablesStore = defineStore('dbTables', {
       }
     },
 
+    async updateTableSchema(requestData: any) {
+      this.isLoading = true
+      this.dbError = null
+
+      try {
+        // Ensure table_name is set in the request
+        if (!requestData.table_name) {
+          throw new Error('table_name is required in the request data')
+        }
+
+        const response: any = await api.db.updateSchema(requestData)
+        if (!response || response.success === false) {
+          const errorMsg =
+            response?.message || `Failed to update schema for table: ${requestData.table_name}`
+          const errorCode = response?.code || 500
+          throw { message: errorMsg, code: errorCode, data: response?.data || [] }
+        }
+
+        // Refresh the columns for this table
+        await this.fetchTableColumns(requestData.table_name)
+
+        return response
+      } catch (error: any) {
+        this.dbError =
+          error.message ||
+          `An error occurred while updating schema for table: ${requestData.table_name}`
+        throw error
+      } finally {
+        this.isLoading = false
+      }
+    },
+
     clearTableData() {
       this.tableData = []
       this.currentRecord = null

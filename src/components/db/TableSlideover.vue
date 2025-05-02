@@ -351,12 +351,8 @@ function handleSubmit() {
 
   // Emit submit event with table data
   emit('submit', createTableRequest)
-
-  // In a real implementation, you might want to wait for API response before closing
-  setTimeout(() => {
-    isSubmitting.value = false
-    handleClose()
-  }, 500)
+  isSubmitting.value = false
+  handleClose()
 }
 
 // Watch for changes in column names to validate them
