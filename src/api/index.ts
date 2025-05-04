@@ -548,24 +548,39 @@ const extensions = {
   getAllExtensions: async (): Promise<APIResponse<any>> => {
     return executeApiCall<{
       extensions: Array<{ name: string; enabled: boolean; version: string; description: string }>
-    }>(useApi('/admin/extensions').get().json())
+    }>(useApi('/extensions').get().json())
   },
 
   /**
    * Enable an extension
    */
-  enableExtension: async (name: string): Promise<APIResponse<{ success: boolean }>> => {
-    return executeApiCall<{ success: boolean }>(
-      useApi('/admin/extensions/enable').post({ name }).json(),
+  enableExtension: async (
+    name: string,
+  ): Promise<APIResponse<{ success: boolean; message?: string; details?: any }>> => {
+    return executeApiCall<{ success: boolean; message?: string; details?: any }>(
+      useApi('/extensions/enable').post({ extension: name }).json(),
     )
   },
 
   /**
    * Disable an extension
    */
-  disableExtension: async (name: string): Promise<APIResponse<{ success: boolean }>> => {
-    return executeApiCall<{ success: boolean }>(
-      useApi('/admin/extensions/disable').post({ name }).json(),
+  disableExtension: async (
+    name: string,
+  ): Promise<APIResponse<{ success: boolean; message?: string; details?: any }>> => {
+    return executeApiCall<{ success: boolean; message?: string; details?: any }>(
+      useApi('/extensions/disable').post({ extension: name }).json(),
+    )
+  },
+
+  /**
+   * Get extension dependencies graph
+   */
+  getExtensionDependencies: async (): Promise<
+    APIResponse<{ dependencies: { nodes: any[]; edges: any[] } }>
+  > => {
+    return executeApiCall<{ dependencies: { nodes: any[]; edges: any[] } }>(
+      useApi('/extensions/dependencies').get().json(),
     )
   },
 }
