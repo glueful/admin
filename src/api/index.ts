@@ -75,6 +75,9 @@ const db = {
   getTables: async (): Promise<APIResponse<string[]>> => {
     return executeApiCall<string[]>(useApi('/admin/db/tables').get().json())
   },
+  getDBStats: async (): Promise<APIResponse<string[]>> => {
+    return executeApiCall<string[]>(useApi('/admin/db/stats').get().json())
+  },
 
   getTable: async (table: string): Promise<APIResponse<TableMetadata>> => {
     return executeApiCall<TableMetadata>(useApi(`/admin/db/table/${table}`).get().json())
@@ -387,18 +390,252 @@ const db = {
 
 // System API calls
 const system = {
-  getStats: async (): Promise<
+  getHealthStats: async (): Promise<APIResponse<any>> => {
+    return executeApiCall(useApi('/admin/system/health').get().json())
+  },
+
+  /**
+   * Get API metrics
+   */
+  getApiMetrics: async (): Promise<
     APIResponse<{
-      totalUsers: number
-      totalTables: number
-      systemHealth: {
-        diskUsage: number
-        memoryUsage: number
-        cpuUsage: number
-      }
+      endpoints: Array<{
+        endpoint: string
+        method: string
+        route: string
+        calls: number
+        avgResponseTime: number
+        errorRate: number
+        lastCalled: string | null
+        category: string
+      }>
+      total_requests: number
+      avg_response_time: number
+      total_errors: number
+      error_rate: number
+      rate_limits: Array<{
+        ip: string
+        endpoint: string
+        remaining: number
+        reset: number
+        limit: number
+        usagePercentage: number
+      }>
+      requests_over_time: Array<{ date: string; count: number }>
+      categories: string[]
+      category_distribution: Array<{ category: string; count: number }>
     }>
   > => {
-    return executeApiCall(useApi('/admin/system/stats').get().json())
+    return executeApiCall(useApi('/admin/system/api-metrics').get().json())
+  },
+
+  /**
+   * Reset API metrics statistics
+   */
+  resetApiMetrics: async (): Promise<APIResponse<null>> => {
+    return executeApiCall<null>(useApi('/admin/system/api-metrics/reset').post({}).json())
+  },
+}
+
+// Migrations API calls
+const migrations = {
+  /**
+   * Get pending migrations
+   */
+  getPendingMigrations: async (): Promise<
+    APIResponse<{ migrations: Array<{ name: string; path: string }> }>
+  > => {
+    return executeApiCall<{ migrations: Array<{ name: string; path: string }> }>(
+      useApi('/admin/migrations/pending').get().json(),
+    )
+  },
+
+  /**
+   * Get all migrations
+   */
+  getAllMigrations: async (): Promise<
+    APIResponse<{
+      migrations: Array<{
+        name: string
+        path: string
+        batch: number
+        applied: boolean
+        applied_at: string | null
+      }>
+    }>
+  > => {
+    return executeApiCall<{
+      migrations: Array<{
+        name: string
+        path: string
+        batch: number
+        applied: boolean
+        applied_at: string | null
+      }>
+    }>(useApi('/admin/migrations').get().json())
+  },
+
+  /**
+   * Run pending migrations
+   */
+  runPendingMigrations: async (): Promise<APIResponse<{ applied: string[] }>> => {
+    return executeApiCall<{ applied: string[] }>(useApi('/admin/migrations/run').post({}).json())
+  },
+}
+
+// Jobs API calls
+const jobs = {
+  /**
+   * Get all scheduled jobs
+   */
+  getAllJobs: async (): Promise<
+    APIResponse<{
+      jobs: Array<{
+        id: number
+        name: string
+        command: string
+        next_run: string
+        last_run: string | null
+        status: string
+      }>
+    }>
+  > => {
+    return executeApiCall<{
+      jobs: Array<{
+        id: number
+        name: string
+        command: string
+        next_run: string
+        last_run: string | null
+        status: string
+      }>
+    }>(useApi('/admin/jobs').get().json())
+  },
+
+  /**
+   * Run a specific job
+   */
+  runJob: async (jobId: number): Promise<APIResponse<{ success: boolean; message: string }>> => {
+    return executeApiCall<{ success: boolean; message: string }>(
+      useApi('/admin/jobs/run').post({ id: jobId }).json(),
+    )
+  },
+
+  /**
+   * Run all due jobs
+   */
+  runDueJobs: async (): Promise<APIResponse<{ executed: number }>> => {
+    return executeApiCall<{ executed: number }>(useApi('/admin/jobs/run-due').post({}).json())
+  },
+
+  /**
+   * Create a new scheduled job
+   */
+  createJob: async (job: {
+    name: string
+    command: string
+    schedule: string
+  }): Promise<APIResponse<{ id: number }>> => {
+    return executeApiCall<{ id: number }>(useApi('/admin/jobs/create-job').post(job).json())
+  },
+}
+
+// Extensions API calls
+const extensions = {
+  /**
+   * Get all extensions
+   */
+  getAllExtensions: async (): Promise<APIResponse<any>> => {
+    return executeApiCall<{
+      extensions: Array<{ name: string; enabled: boolean; version: string; description: string }>
+    }>(useApi('/extensions').get().json())
+  },
+
+  /**
+   * Enable an extension
+   */
+  enableExtension: async (
+    name: string,
+  ): Promise<APIResponse<{ success: boolean; message?: string; details?: any }>> => {
+    return executeApiCall<{ success: boolean; message?: string; details?: any }>(
+      useApi('/extensions/enable').post({ extension: name }).json(),
+    )
+  },
+
+  /**
+   * Disable an extension
+   */
+  disableExtension: async (
+    name: string,
+  ): Promise<APIResponse<{ success: boolean; message?: string; details?: any }>> => {
+    return executeApiCall<{ success: boolean; message?: string; details?: any }>(
+      useApi('/extensions/disable').post({ extension: name }).json(),
+    )
+  },
+
+  /**
+   * Get extension dependencies graph
+   */
+  getExtensionDependencies: async (): Promise<
+    APIResponse<{ dependencies: { nodes: any[]; edges: any[] } }>
+  > => {
+    return executeApiCall<{ dependencies: { nodes: any[]; edges: any[] } }>(
+      useApi('/extensions/dependencies').get().json(),
+    )
+  },
+}
+
+// Permissions API calls
+const permissions = {
+  /**
+   * Get all permissions
+   */
+  getAllPermissions: async (): Promise<
+    APIResponse<{ permissions: Array<{ id: number; name: string; description: string }> }>
+  > => {
+    return executeApiCall<{
+      permissions: Array<{ id: number; name: string; description: string }>
+    }>(useApi('/admin/permissions').get().json())
+  },
+
+  /**
+   * Create a permission
+   */
+  createPermission: async (permission: {
+    name: string
+    description: string
+  }): Promise<APIResponse<{ id: number }>> => {
+    return executeApiCall<{ id: number }>(
+      useApi('/admin/permissions/create').post(permission).json(),
+    )
+  },
+
+  /**
+   * Update a permission
+   */
+  updatePermission: async (
+    id: number,
+    permission: { name: string; description: string },
+  ): Promise<APIResponse<{ success: boolean }>> => {
+    return executeApiCall<{ success: boolean }>(
+      useApi('/admin/permissions/update')
+        .put({ id, ...permission })
+        .json(),
+    )
+  },
+
+  /**
+   * Assign permissions to a role
+   */
+  assignPermissionsToRole: async (
+    roleId: number,
+    permissionIds: number[],
+  ): Promise<APIResponse<{ success: boolean }>> => {
+    return executeApiCall<{ success: boolean }>(
+      useApi('/admin/permissions/assign-to-role')
+        .post({ role_id: roleId, permission_ids: permissionIds })
+        .json(),
+    )
   },
 }
 
@@ -406,6 +643,10 @@ const api = {
   auth,
   db,
   system,
+  migrations,
+  jobs,
+  extensions,
+  permissions,
 }
 
 export default api

@@ -32,3 +32,4 @@ coverage
 auto-imports.d.ts
 components.d.ts
 /public/env.json
+admin-extension-analysis.md
